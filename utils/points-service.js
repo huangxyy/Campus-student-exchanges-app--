@@ -1,24 +1,12 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 
 const LEDGER_KEY = "cm_points_ledger";
 const CHECKIN_KEY = "cm_checkin_record";
 
-function getCurrentProfile() {
-  return getStoredUser() || {};
-}
-
-function getCurrentUserId() {
-  return getCurrentProfile().userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeLedgerEntry(item = {}) {
   return {
-    id: item.id || item._id || `pt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: item.id || item._id || generateId("pt"),
     userId: item.userId || "",
     change: Number(item.change || 0),
     reason: item.reason || "",

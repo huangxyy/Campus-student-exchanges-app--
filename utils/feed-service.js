@@ -1,25 +1,13 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 
 const FEEDS_KEY = "cm_feeds";
 const COMMENTS_KEY = "cm_feed_comments";
 
-function getCurrentProfile() {
-  return getStoredUser() || {};
-}
-
-function getCurrentUserId() {
-  return getCurrentProfile().userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeFeed(item = {}) {
   return {
-    id: item.id || item._id || `feed-${Date.now()}`,
+    id: item.id || item._id || generateId("feed"),
     authorId: item.authorId || "",
     authorName: item.authorName || "校园用户",
     authorAvatar: item.authorAvatar || "",
@@ -37,7 +25,7 @@ function normalizeFeed(item = {}) {
 
 function normalizeComment(item = {}) {
   return {
-    id: item.id || item._id || `comment-${Date.now()}`,
+    id: item.id || item._id || generateId("comment"),
     feedId: item.feedId || "",
     authorId: item.authorId || "",
     authorName: item.authorName || "校园用户",
@@ -283,7 +271,7 @@ export async function publishFeed(payload) {
 
   const feed = normalizeFeed({
     ...fullPayload,
-    id: `feed-${Date.now()}`,
+    id: generateId("feed"),
     status: "active",
     createdAt: Date.now()
   });
@@ -387,7 +375,7 @@ export async function addComment(payload) {
 
   const comment = normalizeComment({
     ...fullPayload,
-    id: `comment-${Date.now()}`,
+    id: generateId("comment"),
     createdAt: Date.now()
   });
   const comments = readComments();

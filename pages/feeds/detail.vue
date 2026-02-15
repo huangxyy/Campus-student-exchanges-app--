@@ -11,10 +11,12 @@
     />
 
     <template v-else>
-      <view class="feed-card card anim-slide-down">
+      <view class="feed-card glass-strong anim-slide-down" style="border-radius: 24rpx;">
         <view class="feed-author">
-          <image v-if="feed.authorAvatar" :src="feed.authorAvatar" class="avatar" mode="aspectFill" />
-          <view v-else class="avatar-placeholder">{{ (feed.authorName || '?')[0] }}</view>
+          <view class="author-avatar-ring">
+            <image v-if="feed.authorAvatar" :src="feed.authorAvatar" class="avatar" mode="aspectFill" />
+            <view v-else class="avatar-placeholder">{{ (feed.authorName || '?')[0] }}</view>
+          </view>
           <view class="author-info">
             <text class="author-name">{{ feed.authorName }}</text>
             <text class="feed-time">{{ formatTime(feed.createdAt) }}</text>
@@ -23,18 +25,19 @@
         </view>
         <view class="feed-content">{{ feed.content }}</view>
         <view v-if="feed.images && feed.images.length > 0" class="feed-images">
-          <image
+          <view
             v-for="(img, idx) in feed.images"
             :key="idx"
-            :src="img"
-            class="feed-img"
-            mode="aspectFill"
+            class="feed-img-wrap img-zoom-wrap"
             @tap="previewImage(feed.images, idx)"
-          />
+          >
+            <image :src="img" class="feed-img" mode="aspectFill" />
+          </view>
         </view>
         <view class="feed-stats">
-          <view :class="['stat-item', isLiked ? 'liked' : '']" @tap="handleLike">
-            <text>{{ isLiked ? '❤️' : '🤍' }} {{ feed.likeCount || 0 }} 赞</text>
+          <view :class="['stat-item', 'btn-bounce', isLiked ? 'liked' : '']" @tap="handleLike">
+            <text :class="['like-icon', likeAnimating ? 'anim-heart' : '']">{{ isLiked ? '❤️' : '🤍' }}</text>
+            <text>{{ feed.likeCount || 0 }} 赞</text>
           </view>
           <view class="stat-item">
             <text>💬 {{ comments.length }} 评论</text>
@@ -42,16 +45,20 @@
         </view>
       </view>
 
-      <view class="comment-section card anim-slide-up anim-d1">
+      <view class="comment-section glass-strong anim-slide-up anim-d1" style="border-radius: 24rpx;">
         <view class="section-title">评论 ({{ comments.length }})</view>
-        <view v-if="comments.length === 0" class="no-comment">暂无评论，来说两句吧</view>
-        <view v-for="c in comments" :key="c.id" class="comment-item">
+        <view v-if="comments.length === 0" class="no-comment anim-fade-in">暂无评论，来说两句吧</view>
+        <view
+          v-for="(c, idx) in comments"
+          :key="c.id"
+          :class="['comment-item', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 1)) : '']"
+        >
           <view class="comment-head">
             <text class="comment-author">{{ c.authorName }}</text>
             <text v-if="c.replyToName" class="reply-hint"> 回复 {{ c.replyToName }}</text>
             <text class="comment-time">{{ formatTime(c.createdAt) }}</text>
           </view>
-          <view class="comment-body" @tap="setReplyTarget(c)">{{ c.content }}</view>
+          <view class="comment-body card-press" @tap="setReplyTarget(c)">{{ c.content }}</view>
         </view>
       </view>
     </template>
@@ -86,7 +93,8 @@ export default {
       loading: false,
       commentText: "",
       commentSubmitting: false,
-      replyTarget: null
+      replyTarget: null,
+      likeAnimating: false
     };
   },
 
@@ -125,6 +133,8 @@ export default {
         uni.navigateTo({ url: "/pages/login/login" });
         return;
       }
+      this.likeAnimating = true;
+      setTimeout(() => { this.likeAnimating = false; }, 1200);
       try {
         await toggleLike(this.feedId);
         this.feed = await getFeedById(this.feedId).catch(() => this.feed);
@@ -170,49 +180,87 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/anim-extra.scss";
+
 .feed-detail-page {
-  padding: 24rpx; padding-bottom: 130rpx;
-  background: radial-gradient(circle at 12% 8%, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0)), #f5f7fc;
+  padding: 24rpx; padding-bottom: 140rpx;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0) 45%),
+    radial-gradient(circle at 88% 30%, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0) 40%),
+    #f2f5fc;
 }
-.loading { margin-top: 100rpx; text-align: center; color: #8b95ab; font-size: 25rpx; }
-.feed-card { padding: 22rpx; }
+.loading { margin-top: 100rpx; text-align: center; color: #8a95ac; font-size: 25rpx; }
+.feed-card { padding: 24rpx; }
 .feed-author { display: flex; align-items: center; gap: 12rpx; }
-.avatar { width: 72rpx; height: 72rpx; border-radius: 50%; flex-shrink: 0; }
+.author-avatar-ring {
+  width: 76rpx; height: 76rpx; border-radius: 50%;
+  padding: 3rpx;
+  background: linear-gradient(135deg, #7c3aed, #2f6bff);
+  flex-shrink: 0;
+}
+.avatar { width: 100%; height: 100%; border-radius: 50%; border: 3rpx solid #fff; display: block; }
 .avatar-placeholder {
-  width: 72rpx; height: 72rpx; border-radius: 50%; background: #e8e0f8; color: #7c3aed;
-  display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; flex-shrink: 0;
+  width: 100%; height: 100%; border-radius: 50%; background: #e8e0f8; color: #7c3aed;
+  display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700;
+  border: 3rpx solid #fff;
 }
 .author-info { flex: 1; min-width: 0; }
-.author-name { display: block; color: #1f2430; font-size: 28rpx; font-weight: 600; }
-.feed-time { display: block; color: #8a93a7; font-size: 22rpx; margin-top: 4rpx; }
-.topic-chip { background: #f0e8ff; color: #7b5ec6; border-radius: 999rpx; padding: 4rpx 14rpx; font-size: 20rpx; flex-shrink: 0; }
+.author-name { display: block; color: #1a2540; font-size: 28rpx; font-weight: 700; }
+.feed-time { display: block; color: #8a95ac; font-size: 22rpx; margin-top: 4rpx; }
+.topic-chip {
+  background: rgba(124, 58, 237, 0.1); color: #7b5ec6; border-radius: 999rpx;
+  padding: 4rpx 14rpx; font-size: 20rpx; font-weight: 600; flex-shrink: 0;
+}
 .feed-content { margin-top: 18rpx; color: #2b3345; font-size: 28rpx; line-height: 1.7; }
 .feed-images { margin-top: 14rpx; display: flex; gap: 10rpx; flex-wrap: wrap; }
-.feed-img { width: 210rpx; height: 210rpx; border-radius: 14rpx; }
-.feed-stats { margin-top: 18rpx; display: flex; gap: 28rpx; padding-top: 14rpx; border-top: 1rpx solid #eef0f6; }
-.stat-item { color: #6e7b92; font-size: 24rpx; }
-.stat-item.liked { color: #e74a62; }
-.comment-section { margin-top: 14rpx; padding: 20rpx; }
-.section-title { color: #25324a; font-size: 27rpx; font-weight: 600; margin-bottom: 14rpx; }
-.no-comment { color: #8a93a7; font-size: 24rpx; text-align: center; padding: 30rpx 0; }
-.comment-item { padding: 14rpx 0; border-bottom: 1rpx solid #f0f2f8; }
+.feed-img-wrap {
+  width: 210rpx; height: 210rpx; border-radius: 16rpx; overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(31, 38, 66, 0.08);
+}
+.feed-img {
+  width: 100%; height: 100%; display: block;
+}
+.feed-stats {
+  margin-top: 18rpx; display: flex; gap: 28rpx; padding-top: 16rpx;
+  border-top: 1rpx solid rgba(238, 240, 246, 0.6);
+}
+.stat-item {
+  display: flex; align-items: center; gap: 6rpx;
+  color: #6a7e9a; font-size: 24rpx;
+  transition: color 0.2s ease;
+}
+.stat-item.liked { color: #e63950; }
+.like-icon { display: inline-block; font-size: 26rpx; }
+.comment-section { margin-top: 14rpx; padding: 22rpx; }
+.section-title { color: #1a2540; font-size: 27rpx; font-weight: 700; margin-bottom: 14rpx; }
+.no-comment { color: #8a95ac; font-size: 24rpx; text-align: center; padding: 30rpx 0; }
+.comment-item { padding: 14rpx 0; border-bottom: 1rpx solid rgba(240, 242, 248, 0.6); }
 .comment-item:last-child { border-bottom: none; }
 .comment-head { display: flex; align-items: center; gap: 8rpx; }
-.comment-author { color: #4f5d75; font-size: 23rpx; font-weight: 600; }
-.reply-hint { color: #8a93a7; font-size: 22rpx; }
-.comment-time { margin-left: auto; color: #8a93a7; font-size: 20rpx; }
-.comment-body { margin-top: 8rpx; color: #2b3345; font-size: 25rpx; line-height: 1.5; }
+.comment-author { color: #4a5a78; font-size: 23rpx; font-weight: 700; }
+.reply-hint { color: #8a95ac; font-size: 22rpx; }
+.comment-time { margin-left: auto; color: #8a95ac; font-size: 20rpx; }
+.comment-body {
+  margin-top: 8rpx; color: #2b3345; font-size: 25rpx; line-height: 1.6;
+  padding: 8rpx 0; border-radius: 8rpx;
+}
 .input-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; padding: 14rpx 20rpx 24rpx;
-  display: flex; gap: 12rpx; background: #fff; border-top: 1rpx solid #e8edf5;
+  position: fixed; left: 0; right: 0; bottom: 0; padding: 14rpx 20rpx 28rpx;
+  display: flex; gap: 12rpx;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20rpx); -webkit-backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(228, 235, 251, 0.6);
 }
 .comment-input {
-  flex: 1; height: 72rpx; padding: 0 20rpx; border-radius: 36rpx; background: #f3f5fb;
-  color: #2b3345; font-size: 26rpx;
+  flex: 1; height: 76rpx; padding: 0 22rpx; border-radius: 38rpx;
+  background: rgba(243, 245, 251, 0.9); color: #2b3345; font-size: 26rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
 }
 .send-btn {
-  margin: 0; height: 72rpx; line-height: 72rpx; border-radius: 36rpx; border: none;
-  background: #7c3aed; color: #fff; font-size: 26rpx; padding: 0 28rpx;
+  margin: 0; height: 76rpx; line-height: 76rpx; border-radius: 38rpx; border: none;
+  background: linear-gradient(135deg, #7c3aed, #9b5bf5); color: #fff;
+  font-size: 26rpx; font-weight: 600; padding: 0 30rpx;
+  box-shadow: 0 4rpx 14rpx rgba(124, 58, 237, 0.3);
 }
 .send-btn::after { border: none; }
 </style>

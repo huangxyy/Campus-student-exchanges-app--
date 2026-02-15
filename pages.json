@@ -213,6 +213,15 @@
       "style": {
         "navigationBarTitleText": "用户协议"
       }
+    },
+    {
+      "path": "pages/easter-egg/game",
+      "style": {
+        "navigationBarTitleText": " ",
+        "navigationBarBackgroundColor": "#0f172a",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0f172a"
+      }
     }
   ],
   "tabBar": {

@@ -1,23 +1,12 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
+import { sanitizeText } from "@/utils/sanitize";
 
 const WIKI_KEY = "cm_wiki_articles";
 
-function getCurrentProfile() {
-  return getStoredUser() || {};
-}
-
-function getCurrentUserId() {
-  return getCurrentProfile().userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeArticle(item = {}) {
   return {
-    id: item.id || item._id || `wiki-${Date.now()}`,
+    id: item.id || item._id || generateId("wiki"),
     title: item.title || "",
     summary: item.summary || "",
     content: item.content || "",
@@ -152,7 +141,10 @@ export async function submitArticle(payload) {
   const fullPayload = {
     ...payload,
     authorId: userId,
-    authorName: profile.nickName || "校园用户"
+    authorName: profile.nickName || "校园用户",
+    title: sanitizeText(payload.title, { maxLength: 60 }),
+    content: sanitizeText(payload.content, { maxLength: 5000 }),
+    summary: sanitizeText(payload.summary || "", { maxLength: 200 }),
   };
 
   const cloudArticle = await submitArticleToCloud(fullPayload).catch(() => null);
@@ -162,7 +154,7 @@ export async function submitArticle(payload) {
 
   const article = normalizeArticle({
     ...fullPayload,
-    id: `wiki-${Date.now()}`,
+    id: generateId("wiki"),
     status: "pending",
     createdAt: Date.now()
   });

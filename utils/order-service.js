@@ -1,25 +1,14 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { showError, withGuard } from "@/utils/error-handler";
+import { sanitizeText } from "@/utils/sanitize";
 
 const ORDERS_KEY = "cm_orders";
 const REVIEWS_KEY = "cm_reviews";
 
-function getCurrentProfile() {
-  return getStoredUser() || {};
-}
-
-function getCurrentUserId() {
-  return getCurrentProfile().userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeOrder(item = {}) {
   return {
-    id: item.id || item._id || `order-${Date.now()}`,
+    id: item.id || item._id || generateId("order"),
     productId: item.productId || "",
     productTitle: item.productTitle || "",
     productPrice: Number(item.productPrice || 0),
@@ -40,14 +29,14 @@ function normalizeOrder(item = {}) {
 
 function normalizeReview(item = {}) {
   return {
-    id: item.id || item._id || `review-${Date.now()}`,
+    id: item.id || item._id || generateId("review"),
     orderId: item.orderId || "",
     fromUserId: item.fromUserId || "",
     fromUserName: item.fromUserName || "",
     toUserId: item.toUserId || "",
     toUserName: item.toUserName || "",
     score: Math.min(5, Math.max(1, Number(item.score || 5))),
-    content: item.content || "",
+    content: sanitizeText(item.content || "", { maxLength: 500 }),
     anonymous: !!item.anonymous,
     createdAt: item.createdAt || Date.now()
   };
@@ -301,7 +290,7 @@ export async function createOrder(payload) {
 
   const order = normalizeOrder({
     ...fullPayload,
-    id: `order-${Date.now()}`,
+    id: generateId("order"),
     status: "pending",
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -336,15 +325,25 @@ export async function getOrder(orderId) {
     return null;
   }
 
+  const userId = getCurrentUserId();
+
   const cloudOrder = await getOrderFromCloud(orderId).catch(() => null);
   if (cloudOrder) {
+    if (userId && cloudOrder.buyerId !== userId && cloudOrder.sellerId !== userId) {
+      return null;
+    }
     return cloudOrder;
   }
 
   await wait(30);
-  return readOrders()
+  const order = readOrders()
     .map((item) => normalizeOrder(item))
     .find((item) => item.id === orderId) || null;
+
+  if (order && userId && order.buyerId !== userId && order.sellerId !== userId) {
+    return null;
+  }
+  return order;
 }
 
 export async function updateOrderStatus(orderId, status) {
@@ -414,14 +413,22 @@ export async function submitReview(payload) {
     return cloudReview;
   }
 
+  // 本地去重：同一用户不能对同一订单重复评价
+  const existing = readReviews();
+  const alreadyReviewed = existing.some(
+    (r) => r.orderId === fullPayload.orderId && r.fromUserId === fullPayload.fromUserId
+  );
+  if (alreadyReviewed) {
+    throw new Error("Already reviewed");
+  }
+
   const review = normalizeReview({
     ...fullPayload,
-    id: `review-${Date.now()}`,
+    id: generateId("review"),
     createdAt: Date.now()
   });
-  const list = readReviews();
-  list.push(review);
-  saveReviews(list);
+  existing.push(review);
+  saveReviews(existing);
   await wait();
   return review;
 }

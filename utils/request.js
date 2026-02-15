@@ -1,3 +1,5 @@
+import { classifyError, showError } from "@/utils/error-handler";
+
 const DEFAULT_TIMEOUT = 10000;
 
 function getToken() {
@@ -58,6 +60,10 @@ export function request(options = {}) {
         reject(new Error(res.data?.message || `Request failed: ${res.statusCode}`));
       },
       fail: (error) => {
+        const code = classifyError(error);
+        if (options.silent !== true) {
+          showError(code, { log: true });
+        }
         reject(error);
       },
       complete: () => {

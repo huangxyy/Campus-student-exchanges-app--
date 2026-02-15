@@ -29,28 +29,39 @@ const SENSITIVE_WORDS = [
   "色情", "毒品", "诈骗", "裸贷", "高利贷"
 ];
 
-let sensitiveRegex = null;
+let sensitiveTestRegex = null;
+let sensitiveReplaceRegex = null;
 
-function getSensitiveRegex() {
-  if (!sensitiveRegex) {
-    const escaped = SENSITIVE_WORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    sensitiveRegex = new RegExp(escaped.join("|"), "gi");
+function buildSensitivePattern() {
+  return SENSITIVE_WORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+}
+
+function getSensitiveTestRegex() {
+  if (!sensitiveTestRegex) {
+    sensitiveTestRegex = new RegExp(buildSensitivePattern(), "i");
   }
-  return sensitiveRegex;
+  return sensitiveTestRegex;
+}
+
+function getSensitiveReplaceRegex() {
+  if (!sensitiveReplaceRegex) {
+    sensitiveReplaceRegex = new RegExp(buildSensitivePattern(), "gi");
+  }
+  return sensitiveReplaceRegex;
 }
 
 export function containsSensitiveWords(text) {
   if (!text) {
     return false;
   }
-  return getSensitiveRegex().test(text);
+  return getSensitiveTestRegex().test(text);
 }
 
 export function maskSensitiveWords(text) {
   if (!text) {
     return "";
   }
-  return text.replace(getSensitiveRegex(), (match) => "*".repeat(match.length));
+  return text.replace(getSensitiveReplaceRegex(), (match) => "*".repeat(match.length));
 }
 
 export function sanitizeText(text, options = {}) {

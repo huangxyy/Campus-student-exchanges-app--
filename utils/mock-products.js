@@ -1,8 +1,7 @@
-// 使用函数调用确保每次访问 mock 数据时获取最新时间
-function getNow() {
+// 使用 getter 确保每次访问 mock 数据时获取最新时间
+function now() {
   return Date.now();
 }
-const now = getNow();
 
 export const productCategories = [
   { label: "全部", value: "all" },
@@ -32,8 +31,8 @@ export const mockProducts = [
     userName: "陈同学",
     userAvatar: "https://picsum.photos/seed/u1/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 3,
-    updatedAt: now - 1000 * 60 * 60 * 3
+    createdAt: now() - 1000 * 60 * 60 * 3,
+    updatedAt: now() - 1000 * 60 * 60 * 3
   },
   {
     _id: "prod-1002",
@@ -53,8 +52,8 @@ export const mockProducts = [
     userName: "李同学",
     userAvatar: "https://picsum.photos/seed/u2/120/120",
     aiGenerated: true,
-    createdAt: now - 1000 * 60 * 60 * 8,
-    updatedAt: now - 1000 * 60 * 60 * 8
+    createdAt: now() - 1000 * 60 * 60 * 8,
+    updatedAt: now() - 1000 * 60 * 60 * 8
   },
   {
     _id: "prod-1003",
@@ -74,8 +73,8 @@ export const mockProducts = [
     userName: "吴同学",
     userAvatar: "https://picsum.photos/seed/u3/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 14,
-    updatedAt: now - 1000 * 60 * 60 * 14
+    createdAt: now() - 1000 * 60 * 60 * 14,
+    updatedAt: now() - 1000 * 60 * 60 * 14
   },
   {
     _id: "prod-1004",
@@ -95,8 +94,8 @@ export const mockProducts = [
     userName: "周同学",
     userAvatar: "https://picsum.photos/seed/u4/120/120",
     aiGenerated: true,
-    createdAt: now - 1000 * 60 * 60 * 20,
-    updatedAt: now - 1000 * 60 * 60 * 20
+    createdAt: now() - 1000 * 60 * 60 * 20,
+    updatedAt: now() - 1000 * 60 * 60 * 20
   },
   {
     _id: "prod-1005",
@@ -116,8 +115,8 @@ export const mockProducts = [
     userName: "郑同学",
     userAvatar: "https://picsum.photos/seed/u5/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 28,
-    updatedAt: now - 1000 * 60 * 60 * 28
+    createdAt: now() - 1000 * 60 * 60 * 28,
+    updatedAt: now() - 1000 * 60 * 60 * 28
   },
   {
     _id: "prod-1006",
@@ -137,8 +136,8 @@ export const mockProducts = [
     userName: "孙同学",
     userAvatar: "https://picsum.photos/seed/u6/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 36,
-    updatedAt: now - 1000 * 60 * 60 * 36
+    createdAt: now() - 1000 * 60 * 60 * 36,
+    updatedAt: now() - 1000 * 60 * 60 * 36
   },
   {
     _id: "prod-1007",
@@ -158,8 +157,8 @@ export const mockProducts = [
     userName: "杨同学",
     userAvatar: "https://picsum.photos/seed/u7/120/120",
     aiGenerated: true,
-    createdAt: now - 1000 * 60 * 60 * 42,
-    updatedAt: now - 1000 * 60 * 60 * 42
+    createdAt: now() - 1000 * 60 * 60 * 42,
+    updatedAt: now() - 1000 * 60 * 60 * 42
   },
   {
     _id: "prod-1008",
@@ -179,8 +178,8 @@ export const mockProducts = [
     userName: "赵同学",
     userAvatar: "https://picsum.photos/seed/u8/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 50,
-    updatedAt: now - 1000 * 60 * 60 * 50
+    createdAt: now() - 1000 * 60 * 60 * 50,
+    updatedAt: now() - 1000 * 60 * 60 * 50
   },
   {
     _id: "prod-1009",
@@ -200,8 +199,8 @@ export const mockProducts = [
     userName: "钱同学",
     userAvatar: "https://picsum.photos/seed/u9/120/120",
     aiGenerated: true,
-    createdAt: now - 1000 * 60 * 60 * 56,
-    updatedAt: now - 1000 * 60 * 60 * 56
+    createdAt: now() - 1000 * 60 * 60 * 56,
+    updatedAt: now() - 1000 * 60 * 60 * 56
   },
   {
     _id: "prod-1010",
@@ -221,8 +220,8 @@ export const mockProducts = [
     userName: "冯同学",
     userAvatar: "https://picsum.photos/seed/u10/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 62,
-    updatedAt: now - 1000 * 60 * 60 * 62
+    createdAt: now() - 1000 * 60 * 60 * 62,
+    updatedAt: now() - 1000 * 60 * 60 * 62
   },
   {
     _id: "prod-1011",
@@ -242,8 +241,8 @@ export const mockProducts = [
     userName: "蒋同学",
     userAvatar: "https://picsum.photos/seed/u11/120/120",
     aiGenerated: true,
-    createdAt: now - 1000 * 60 * 60 * 74,
-    updatedAt: now - 1000 * 60 * 60 * 74
+    createdAt: now() - 1000 * 60 * 60 * 74,
+    updatedAt: now() - 1000 * 60 * 60 * 74
   },
   {
     _id: "prod-1012",
@@ -263,7 +262,7 @@ export const mockProducts = [
     userName: "韩同学",
     userAvatar: "https://picsum.photos/seed/u12/120/120",
     aiGenerated: false,
-    createdAt: now - 1000 * 60 * 60 * 80,
-    updatedAt: now - 1000 * 60 * 60 * 80
+    createdAt: now() - 1000 * 60 * 60 * 80,
+    updatedAt: now() - 1000 * 60 * 60 * 80
   }
 ];

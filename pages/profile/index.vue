@@ -1,44 +1,52 @@
 <template>
   <view class="profile-page">
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+      <view class="orb orb-2 anim-float-x"></view>
+    </view>
+
     <!-- Hero 头像区 -->
-    <view class="hero card anim-slide-down" v-if="isLogin">
+    <view class="hero glass-strong anim-slide-down" style="border-radius: 28rpx;" v-if="isLogin">
       <view class="hero-bg"></view>
       <view class="hero-content">
-        <image class="avatar anim-scale-in anim-d1" :src="profile.avatar" mode="aspectFill" />
+        <view :class="['avatar-wrap', 'anim-bounce-in', avatarSpinning ? 'avatar-spin-egg' : '']" @longpress="onAvatarLongPress">
+          <view class="avatar-ring-glow"></view>
+          <image class="avatar" :src="profile.avatar" mode="aspectFill" />
+        </view>
         <view class="hero-info">
           <view class="name">{{ profile.nickName }}</view>
           <view class="meta-row">
-            <view class="rating-chip" :style="{ borderColor: trustLevel.color + '33' }">
+            <view class="rating-chip anim-scale-in anim-d2" :style="{ borderColor: trustLevel.color + '33' }" @tap.stop="onRatingTap">
               <text class="rating-icon">{{ trustLevel.icon || '⭐' }}</text>
               <text :style="{ color: trustLevel.color }">{{ trustLevel.level }} {{ trustScore }}分</text>
             </view>
-            <view class="id-chip">学号待绑定</view>
+            <view class="id-chip anim-scale-in anim-d3">学号待绑定</view>
           </view>
         </view>
       </view>
-      <view class="stats-row anim-slide-up anim-d2">
+      <view class="stats-row anim-slide-up anim-d3">
         <view class="stat-item press-able" @tap="goMyProducts">
-          <text class="stat-value">{{ profile.productCount || 0 }}</text>
+          <text class="stat-value num-animate">{{ profile.productCount || 0 }}</text>
           <text class="stat-label">商品</text>
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item press-able" @tap="goMyTasks">
-          <text class="stat-value">{{ profile.taskCount || 0 }}</text>
+          <text class="stat-value num-animate">{{ profile.taskCount || 0 }}</text>
           <text class="stat-label">任务</text>
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item press-able" @tap="goFavorites">
-          <text class="stat-value">{{ profile.favoriteCount || 0 }}</text>
+          <text class="stat-value num-animate">{{ profile.favoriteCount || 0 }}</text>
           <text class="stat-label">收藏</text>
         </view>
       </view>
     </view>
 
     <!-- 未登录状态 -->
-    <view class="hero card guest-hero anim-scale-in" v-else>
+    <view class="hero glass-strong guest-hero anim-bounce-in" style="border-radius: 28rpx;" v-else>
       <view class="hero-bg"></view>
       <view class="guest-content">
-        <view class="guest-avatar">🙂</view>
+        <view class="guest-avatar anim-float">🙂</view>
         <view class="guest-info">
           <view class="guest-title">还未登录</view>
           <view class="guest-desc">登录后可查看我的商品、订单与消息</view>
@@ -48,11 +56,12 @@
     </view>
 
     <!-- 功能菜单 -->
-    <view class="section-head anim-fade-in anim-d2">
+    <view class="section-head anim-fade-in anim-d3">
       <text class="section-title">我的服务</text>
+      <text class="section-badge">{{ menuItems.length }}项</text>
     </view>
 
-    <view class="menu card anim-slide-up anim-d3">
+    <view class="menu glass-strong anim-slide-up anim-d4" style="border-radius: 24rpx;">
       <view class="menu-item card-press" v-for="item in menuItems" :key="item.key" @tap="handleMenuTap(item)">
         <view class="menu-left">
           <view :class="['menu-icon', item.tone]">{{ item.icon }}</view>
@@ -66,11 +75,11 @@
     </view>
 
     <!-- 其他设置 -->
-    <view class="section-head anim-fade-in anim-d4">
+    <view class="section-head anim-fade-in anim-d5">
       <text class="section-title">其他</text>
     </view>
 
-    <view class="menu card anim-slide-up anim-d5">
+    <view class="menu glass-strong anim-slide-up anim-d6" style="border-radius: 24rpx;">
       <view class="menu-item card-press" @tap="goPage('/pages/profile/settings')">
         <view class="menu-left">
           <view class="menu-icon tone-gray">⚙</view>
@@ -83,19 +92,28 @@
       </view>
     </view>
 
-    <button v-if="isLogin" class="logout-btn btn-bounce anim-fade-in anim-d6" @tap="logout">退出登录</button>
+    <button v-if="isLogin" class="logout-btn btn-bounce anim-fade-in anim-d7" @tap="logout">退出登录</button>
+
+    <!-- 隐藏彩蛋: 底部小圆点 -->
+    <view class="hidden-egg-zone" @tap="onHiddenEggTap">
+      <view class="hidden-egg-dot"></view>
+    </view>
   </view>
 </template>
 
 <script>
 import { useUserStore } from "@/store/user";
 import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
+import { createTapCounter, getRandomAvatarSecret, getRandomFunFact } from "@/utils/easter-eggs";
+
+let _ratingTapper = null;
 
 export default {
   data() {
     return {
       trustScore: 0,
       trustLevel: { level: "", color: "#8a93a7", icon: "" },
+      avatarSpinning: false,
       menuItems: [
         { key: "products", icon: "🛒", label: "我的商品", desc: "管理在售与已下架商品", tone: "tone-blue" },
         { key: "orders", icon: "📦", label: "我的订单", desc: "交易进度与评价", tone: "tone-ocean" },
@@ -103,7 +121,7 @@ export default {
         { key: "publishTask", icon: "📌", label: "发布任务", desc: "发布代取、代课等校园任务", tone: "tone-amber" },
         { key: "myTasks", icon: "📋", label: "我的任务", desc: "查看发布与接单记录", tone: "tone-green" },
         { key: "points", icon: "⭐", label: "积分中心", desc: "签到赚积分查明细", tone: "tone-amber" },
-        { key: "feeds", icon: "�", label: "校园动态", desc: "分享校园生活趣事", tone: "tone-violet" },
+        { key: "feeds", icon: "📢", label: "校园动态", desc: "分享校园生活趣事", tone: "tone-violet" },
         { key: "wiki", icon: "📖", label: "校园维基", desc: "经验攻略知识库", tone: "tone-green" },
         { key: "favorites", icon: "❤", label: "我的收藏", desc: "收藏的商品与任务", tone: "tone-pink" }
       ]
@@ -232,6 +250,36 @@ export default {
         title: `${name}将在后续阶段完成`,
         icon: "none"
       });
+    },
+
+    // ---- 彩蛋: 隐藏链接 ----
+    onHiddenEggTap() {
+      uni.setClipboardData({
+        data: "https://www.bilibili.com/video/BV1UT42167xb/?spm_id_from=333.337.search-card.all.click&vd_source=84624019b0e0f24bc4d2b987ff70dd39",
+        success() {
+          uni.showToast({ title: "🎁 神秘链接已复制\n去浏览器打开看看吧~", icon: "none", duration: 3000 });
+        }
+      });
+    },
+
+    // ---- 彩蛋: 长按头像 ----
+    onAvatarLongPress() {
+      if (this.avatarSpinning) return;
+      this.avatarSpinning = true;
+      uni.vibrateShort && uni.vibrateShort({ type: "medium" });
+      uni.showToast({ title: getRandomAvatarSecret(), icon: "none", duration: 2500 });
+      setTimeout(() => { this.avatarSpinning = false; }, 1200);
+    },
+
+    // ---- 彩蛋: 连击信用分 ----
+    onRatingTap() {
+      if (!_ratingTapper) {
+        _ratingTapper = createTapCounter(5, 500, () => {
+          uni.vibrateShort && uni.vibrateShort({ type: "light" });
+          uni.showToast({ title: getRandomFunFact(), icon: "none", duration: 3000 });
+        });
+      }
+      _ratingTapper.tap();
     }
   }
 };
@@ -239,12 +287,37 @@ export default {
 
 <style lang="scss" scoped>
 .profile-page {
+  position: relative;
   padding: 24rpx;
   padding-bottom: 120rpx;
+  overflow: hidden;
   background:
-    radial-gradient(circle at 12% 8%, rgba(47, 107, 255, 0.12), rgba(47, 107, 255, 0)),
-    radial-gradient(circle at 88% 20%, rgba(38, 201, 159, 0.1), rgba(38, 201, 159, 0)),
-    #f5f7fc;
+    radial-gradient(circle at 10% 6%, rgba(47, 107, 255, 0.14), rgba(47, 107, 255, 0) 45%),
+    radial-gradient(circle at 90% 18%, rgba(19, 194, 163, 0.1), rgba(19, 194, 163, 0) 40%),
+    #f2f5fc;
+}
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.45;
+}
+.orb-1 {
+  width: 200rpx; height: 200rpx;
+  top: -30rpx; right: -40rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.28), transparent 70%);
+}
+.orb-2 {
+  width: 150rpx; height: 150rpx;
+  top: 350rpx; left: -30rpx;
+  background: radial-gradient(circle, rgba(19, 194, 163, 0.22), transparent 70%);
 }
 
 /* --- Hero 头像区 --- */
@@ -252,20 +325,14 @@ export default {
   position: relative;
   overflow: hidden;
   padding: 28rpx;
-  background:
-    linear-gradient(140deg, rgba(231, 239, 255, 0.96), rgba(243, 247, 255, 0.98)),
-    #ffffff;
-  border: 1rpx solid #e4ebfb;
 }
 
 .hero-bg {
   position: absolute;
-  top: -40rpx;
-  right: -30rpx;
-  width: 220rpx;
-  height: 220rpx;
+  top: -50rpx; right: -30rpx;
+  width: 220rpx; height: 220rpx;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(47, 107, 255, 0.08), rgba(47, 107, 255, 0));
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.1), transparent);
   pointer-events: none;
 }
 
@@ -276,12 +343,28 @@ export default {
   gap: 20rpx;
 }
 
-.avatar {
-  width: 120rpx;
-  height: 120rpx;
+.avatar-wrap {
+  position: relative;
+  width: 120rpx; height: 120rpx;
+  flex-shrink: 0;
+}
+.avatar-ring-glow {
+  position: absolute;
+  top: -6rpx; right: -6rpx; bottom: -6rpx; left: -6rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 6rpx 18rpx rgba(47, 107, 255, 0.15);
+  background: linear-gradient(135deg, #2f6bff, #13c2a3, #7c3aed);
+  opacity: 0.5;
+  filter: blur(8rpx);
+  animation: anim-gradient-shift 4s ease infinite;
+  background-size: 200% 200%;
+}
+.avatar {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4rpx solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6rpx 20rpx rgba(47, 107, 255, 0.18);
 }
 
 .hero-info {
@@ -289,9 +372,9 @@ export default {
 }
 
 .name {
-  color: #1f2a3d;
+  color: #1a2540;
   font-size: 36rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .meta-row {
@@ -310,7 +393,7 @@ export default {
   line-height: 42rpx;
   padding: 0 14rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   border: 1rpx solid #e3eaf9;
   color: #4b62a8;
   font-size: 21rpx;
@@ -325,19 +408,19 @@ export default {
   line-height: 42rpx;
   padding: 0 14rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   border: 1rpx solid #e3eaf9;
-  color: #7080a0;
+  color: #7a8ba8;
   font-size: 21rpx;
 }
 
 .stats-row {
   position: relative;
-  margin-top: 20rpx;
+  margin-top: 22rpx;
   display: flex;
   align-items: center;
-  padding: 16rpx 0 4rpx;
-  border-top: 1rpx solid rgba(228, 235, 251, 0.6);
+  padding: 18rpx 0 6rpx;
+  border-top: 1rpx solid rgba(228, 235, 251, 0.5);
 }
 
 .stat-item {
@@ -345,30 +428,30 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: transform 0.2s ease;
 }
+.stat-item:active { transform: scale(0.95); }
 
 .stat-value {
-  color: #2e5fce;
-  font-size: 32rpx;
-  font-weight: 700;
+  color: #2356c0;
+  font-size: 34rpx;
+  font-weight: 800;
 }
 
 .stat-label {
   margin-top: 4rpx;
-  color: #7080a0;
+  color: #7a8ba8;
   font-size: 22rpx;
 }
 
 .stat-divider {
   width: 1rpx;
   height: 44rpx;
-  background: #dde6f8;
+  background: linear-gradient(180deg, transparent, #d8e2f8, transparent);
 }
 
 /* --- 未登录 --- */
-.guest-hero {
-  padding: 36rpx 28rpx;
-}
+.guest-hero { padding: 36rpx 28rpx; }
 
 .guest-content {
   position: relative;
@@ -378,10 +461,9 @@ export default {
 }
 
 .guest-avatar {
-  width: 100rpx;
-  height: 100rpx;
+  width: 100rpx; height: 100rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   border: 1rpx solid #e3eaf9;
   display: flex;
   align-items: center;
@@ -389,19 +471,15 @@ export default {
   font-size: 48rpx;
 }
 
-.guest-info {
-  flex: 1;
-}
-
+.guest-info { flex: 1; }
 .guest-title {
-  color: #1f2a3d;
+  color: #1a2540;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
-
 .guest-desc {
   margin-top: 8rpx;
-  color: #6e7b92;
+  color: #6a7e9a;
   font-size: 24rpx;
 }
 
@@ -409,45 +487,55 @@ export default {
   position: relative;
   margin: 20rpx 0 0;
   width: 200rpx;
-  height: 68rpx;
-  line-height: 68rpx;
-  border-radius: 34rpx;
+  height: 70rpx;
+  line-height: 70rpx;
+  border-radius: 35rpx;
   border: none;
-  background: linear-gradient(135deg, #2f6bff, #2459d6);
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   color: #fff;
   font-size: 26rpx;
   font-weight: 600;
+  box-shadow: 0 6rpx 18rpx rgba(47, 107, 255, 0.3);
 }
+.login-btn::after { border: none; }
 
 /* --- 段落标题 --- */
 .section-head {
-  margin: 24rpx 4rpx 12rpx;
+  margin: 26rpx 4rpx 14rpx;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .section-title {
-  color: #1f2430;
+  color: #1a2540;
   font-size: 29rpx;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.5rpx;
+}
+
+.section-badge {
+  height: 34rpx;
+  line-height: 34rpx;
+  padding: 0 12rpx;
+  border-radius: 999rpx;
+  background: rgba(47, 107, 255, 0.08);
+  color: #4a78d4;
+  font-size: 20rpx;
+  font-weight: 600;
 }
 
 /* --- 菜单 --- */
-.menu {
-  padding: 4rpx 0;
-}
+.menu { padding: 4rpx 0; }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 22rpx 24rpx;
-  border-bottom: 1rpx solid #eef2fb;
+  border-bottom: 1rpx solid rgba(238, 242, 251, 0.6);
 }
-
-.menu-item:last-child {
-  border-bottom: none;
-}
+.menu-item:last-child { border-bottom: none; }
 
 .menu-left {
   display: flex;
@@ -456,47 +544,24 @@ export default {
 }
 
 .menu-icon {
-  width: 64rpx;
-  height: 64rpx;
+  width: 64rpx; height: 64rpx;
   border-radius: 18rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 30rpx;
   flex-shrink: 0;
+  box-shadow: 0 4rpx 10rpx rgba(31, 38, 66, 0.04);
 }
 
-.menu-icon.tone-blue {
-  background: linear-gradient(140deg, rgba(231, 236, 255, 0.95), rgba(241, 244, 255, 0.96));
-}
-
-.menu-icon.tone-amber {
-  background: linear-gradient(140deg, rgba(255, 239, 222, 0.94), rgba(255, 247, 235, 0.96));
-}
-
-.menu-icon.tone-green {
-  background: linear-gradient(140deg, rgba(227, 247, 240, 0.95), rgba(238, 251, 246, 0.96));
-}
-
-.menu-icon.tone-ocean {
-  background: linear-gradient(140deg, rgba(224, 239, 255, 0.95), rgba(236, 246, 255, 0.95));
-}
-
-.menu-icon.tone-pink {
-  background: linear-gradient(140deg, rgba(255, 230, 235, 0.95), rgba(255, 241, 243, 0.96));
-}
-
-.menu-icon.tone-orange {
-  background: linear-gradient(140deg, rgba(255, 240, 225, 0.95), rgba(255, 248, 238, 0.96));
-}
-
-.menu-icon.tone-violet {
-  background: linear-gradient(140deg, rgba(243, 238, 255, 0.95), rgba(248, 245, 255, 0.96));
-}
-
-.menu-icon.tone-gray {
-  background: linear-gradient(140deg, rgba(237, 241, 251, 0.95), rgba(244, 246, 252, 0.96));
-}
+.menu-icon.tone-blue   { background: linear-gradient(145deg, rgba(224, 236, 255, 0.95), rgba(240, 246, 255, 0.96)); }
+.menu-icon.tone-amber  { background: linear-gradient(145deg, rgba(255, 242, 224, 0.95), rgba(255, 250, 240, 0.96)); }
+.menu-icon.tone-green  { background: linear-gradient(145deg, rgba(224, 248, 240, 0.95), rgba(240, 252, 248, 0.96)); }
+.menu-icon.tone-ocean  { background: linear-gradient(145deg, rgba(224, 239, 255, 0.95), rgba(240, 248, 255, 0.96)); }
+.menu-icon.tone-pink   { background: linear-gradient(145deg, rgba(255, 230, 238, 0.95), rgba(255, 244, 246, 0.96)); }
+.menu-icon.tone-orange { background: linear-gradient(145deg, rgba(255, 242, 228, 0.95), rgba(255, 250, 242, 0.96)); }
+.menu-icon.tone-violet { background: linear-gradient(145deg, rgba(242, 236, 255, 0.95), rgba(250, 248, 255, 0.96)); }
+.menu-icon.tone-gray   { background: linear-gradient(145deg, rgba(237, 241, 251, 0.95), rgba(246, 248, 253, 0.96)); }
 
 .menu-text {
   display: flex;
@@ -504,14 +569,14 @@ export default {
 }
 
 .menu-label {
-  color: #1f2a3c;
+  color: #1a2540;
   font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .menu-desc {
   margin-top: 4rpx;
-  color: #8a93a8;
+  color: #8a95ac;
   font-size: 22rpx;
 }
 
@@ -519,22 +584,54 @@ export default {
   color: #b0b8cc;
   font-size: 36rpx;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.menu-item:active .menu-arrow {
+  transform: translateX(6rpx);
+  color: #8a9cc0;
 }
 
 /* --- 退出登录 --- */
 .logout-btn {
   margin-top: 30rpx;
-  height: 84rpx;
-  line-height: 84rpx;
-  border-radius: 42rpx;
+  height: 86rpx;
+  line-height: 86rpx;
+  border-radius: 43rpx;
   border: none;
-  background: #fceff1;
+  background: rgba(252, 239, 241, 0.85);
   color: $danger-color;
   font-size: 28rpx;
   font-weight: 600;
+  backdrop-filter: blur(10rpx);
+  -webkit-backdrop-filter: blur(10rpx);
+}
+.logout-btn::after { border: none; }
+
+/* ---- 隐藏彩蛋按钮 ---- */
+.hidden-egg-zone {
+  display: flex;
+  justify-content: flex-end;
+  padding: 30rpx 20rpx 60rpx;
+}
+.hidden-egg-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: rgba(200, 208, 224, 0.25);
 }
 
-.logout-btn::after {
-  border: none;
+/* ---- 彩蛋: 头像旋转 ---- */
+.avatar-spin-egg {
+  animation: egg-avatar-spin 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.avatar-spin-egg .avatar-ring-glow {
+  opacity: 0.9 !important;
+  filter: blur(14rpx) !important;
+}
+@keyframes egg-avatar-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  40%  { transform: rotate(380deg) scale(1.12); }
+  70%  { transform: rotate(355deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
 }
 </style>

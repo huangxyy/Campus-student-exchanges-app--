@@ -1,25 +1,13 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 
 const WANTS_KEY = "cm_wants";
 const SUBSCRIPTIONS_KEY = "cm_want_subscriptions";
 
-function getCurrentProfile() {
-  return getStoredUser() || {};
-}
-
-function getCurrentUserId() {
-  return getCurrentProfile().userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeWant(item = {}) {
   return {
-    id: item.id || item._id || `want-${Date.now()}`,
+    id: item.id || item._id || generateId("want"),
     title: item.title || "",
     description: item.description || "",
     category: item.category || "其他",
@@ -37,7 +25,7 @@ function normalizeWant(item = {}) {
 
 function normalizeSubscription(item = {}) {
   return {
-    id: item.id || item._id || `sub-${Date.now()}`,
+    id: item.id || item._id || generateId("sub"),
     userId: item.userId || "",
     categories: Array.isArray(item.categories) ? item.categories : [],
     keywords: Array.isArray(item.keywords) ? item.keywords : [],
@@ -297,7 +285,7 @@ export async function publishWant(payload) {
 
   const want = normalizeWant({
     ...fullPayload,
-    id: `want-${Date.now()}`,
+    id: generateId("want"),
     status: "active",
     createdAt: Date.now(),
     updatedAt: Date.now()

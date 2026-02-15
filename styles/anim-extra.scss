@@ -1,0 +1,56 @@
+/**
+ * 低频动画 — 仅在需要的页面中 @import 使用
+ * 从 App.vue 全局样式中拆出，减少每个页面的 wxss 体积
+ */
+
+@keyframes anim-rubber {
+  0%   { transform: scale(1); }
+  30%  { transform: scaleX(1.18) scaleY(0.84); }
+  40%  { transform: scaleX(0.88) scaleY(1.1); }
+  50%  { transform: scaleX(1.08) scaleY(0.94); }
+  65%  { transform: scaleX(0.97) scaleY(1.02); }
+  75%  { transform: scaleX(1.02) scaleY(0.99); }
+  100% { transform: scale(1); }
+}
+
+@keyframes anim-tada {
+  0%           { transform: scale(1) rotate(0); }
+  10%, 20%     { transform: scale(0.92) rotate(-3deg); }
+  30%, 50%, 70% { transform: scale(1.08) rotate(3deg); }
+  40%, 60%     { transform: scale(1.08) rotate(-3deg); }
+  80%          { transform: scale(1) rotate(0); }
+  100%         { transform: scale(1) rotate(0); }
+}
+
+@keyframes anim-jelly {
+  0%   { transform: scale(1, 1); }
+  25%  { transform: scale(0.95, 1.05); }
+  50%  { transform: scale(1.05, 0.95); }
+  75%  { transform: scale(0.98, 1.02); }
+  100% { transform: scale(1, 1); }
+}
+
+@keyframes anim-heart-beat {
+  0%        { transform: scale(1); }
+  14%       { transform: scale(1.26); }
+  28%       { transform: scale(1); }
+  42%       { transform: scale(1.26); }
+  70%, 100% { transform: scale(1); }
+}
+
+@keyframes anim-confetti-pop {
+  0%   { opacity: 1; transform: scale(0) rotate(0); }
+  50%  { opacity: 1; transform: scale(1.2) rotate(180deg); }
+  100% { opacity: 0; transform: scale(1.5) rotate(360deg); }
+}
+
+@keyframes anim-bubble-rise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+  20%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-160rpx) scale(1); }
+}
+
+.anim-rubber  { animation: anim-rubber 0.8s ease; }
+.anim-jelly   { animation: anim-jelly 0.6s ease; }
+.anim-tada    { animation: anim-tada 0.8s ease; }
+.anim-heart   { animation: anim-heart-beat 1.2s ease-in-out; }

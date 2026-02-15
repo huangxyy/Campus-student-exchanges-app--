@@ -1,16 +1,7 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentUserId, wait } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 
 const FAVORITES_KEY = "cm_favorites";
-
-function wait(ms = 60) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getCurrentUserId() {
-  const user = getStoredUser() || {};
-  return user.userId || "";
-}
 
 function getUserFavoritesKey(userId) {
   return `${FAVORITES_KEY}_${userId || "guest"}`;

@@ -1,5 +1,5 @@
 <template>
-  <view class="chat-page" @tap="closeSwipeActions">
+  <view class="chat-page">
     <empty-state
       v-if="!isLogin"
       title="登录后查看消息"
@@ -16,7 +16,7 @@
             <view class="banner-title">消息中心</view>
             <view class="banner-desc">交易沟通、任务协作，实时在线</view>
           </view>
-          <view class="banner-badge anim-float">💬</view>
+          <view class="banner-badge anim-float" @tap.stop="onBadgeTap">💬</view>
         </view>
         <view class="banner-pills">
           <text class="pill">{{ list.length }} 个会话</text>
@@ -53,28 +53,15 @@
         <view
           v-for="(item, idx) in filteredList"
           :key="item.id"
-          class="swipe-row"
-          @touchstart="onItemTouchStart($event)"
-          @touchmove="onItemTouchMove($event, item.id)"
-          @touchend="onItemTouchEnd(item.id)"
+          :class="[
+            'chat-item',
+            'card',
+            'card-press',
+            'anim-slide-up',
+            idx < 8 ? ('anim-d' + (idx + 1)) : ''
+          ]"
+          @tap="openConversation(item)"
         >
-          <view class="swipe-actions">
-            <view class="swipe-btn top" @tap.stop="handleQuickTop(item)">{{ item.isTop ? "取消置顶" : "置顶" }}</view>
-            <view class="swipe-btn read" @tap.stop="handleQuickRead(item)">已读</view>
-            <view class="swipe-btn del" @tap.stop="handleQuickDelete(item)">删除</view>
-          </view>
-
-          <view
-            :class="[
-              'chat-item',
-              'card',
-              'card-press',
-              'anim-slide-up',
-              idx < 8 ? ('anim-d' + (idx + 1)) : '',
-              activeSwipeId === item.id ? 'swiped' : ''
-            ]"
-            @tap="openConversation(item)"
-          >
             <view class="avatar-wrap">
               <image class="avatar" :src="item.peerAvatar" mode="aspectFill" />
               <view v-if="item.unread > 0" class="online-dot"></view>
@@ -96,10 +83,19 @@
                 </view>
               </view>
             </view>
-          </view>
         </view>
       </template>
     </template>
+
+    <!-- 彩蛋: emoji 雨 -->
+    <view v-if="showEmojiRain" class="emoji-rain-layer">
+      <text
+        v-for="p in emojiRainParticles"
+        :key="p.id"
+        class="emoji-drop"
+        :style="{ left: p.left + '%', animationDelay: p.delay + 's', animationDuration: p.duration + 's', fontSize: p.size + 'rpx' }"
+      >{{ p.emoji }}</text>
+    </view>
   </view>
 </template>
 
@@ -108,6 +104,9 @@ import EmptyState from "@/components/empty-state/empty-state.vue";
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { deleteConversation, listConversations, markConversationRead, setConversationTop, watchConversations } from "@/utils/chat-service";
+import { createTapCounter, getRandomChatSecret, generateFloatingParticles } from "@/utils/easter-eggs";
+
+let _badgeTapper = null;
 
 export default {
   components: {
@@ -124,11 +123,8 @@ export default {
       watchRetryCount: 0,
       syncing: false,
       syncMode: "idle",
-      activeSwipeId: "",
-      touchStartX: 0,
-      touchStartY: 0,
-      touchMoved: false,
-      touchDirection: ""
+      showEmojiRain: false,
+      emojiRainParticles: []
     };
   },
 
@@ -316,64 +312,6 @@ export default {
       this.listPollingTimer = null;
     },
 
-    closeSwipeActions() {
-      if (this.activeSwipeId) {
-        this.activeSwipeId = "";
-      }
-    },
-
-    onItemTouchStart(event) {
-      const touch = event?.touches?.[0];
-      this.touchStartX = Number(touch?.clientX || 0);
-      this.touchStartY = Number(touch?.clientY || 0);
-      this.touchMoved = false;
-      this.touchDirection = "";
-    },
-
-    onItemTouchMove(event, id) {
-      const touch = event?.touches?.[0];
-      const x = Number(touch?.clientX || 0);
-      const y = Number(touch?.clientY || 0);
-      const dx = x - this.touchStartX;
-      const dy = y - this.touchStartY;
-      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
-        return;
-      }
-
-      this.touchMoved = true;
-      if (!this.touchDirection) {
-        const delta = Math.abs(dx) - Math.abs(dy);
-        if (delta > 8) {
-          this.touchDirection = "horizontal";
-        } else if (delta < -8) {
-          this.touchDirection = "vertical";
-        }
-      }
-
-      if (this.touchDirection !== "horizontal") {
-        return;
-      }
-
-      if (dx < -56) {
-        this.activeSwipeId = id;
-      } else if (dx > 24 && this.activeSwipeId === id) {
-        this.activeSwipeId = "";
-      }
-    },
-
-    onItemTouchEnd(id) {
-      if (!this.touchMoved || this.touchDirection !== "horizontal") {
-        this.touchDirection = "";
-        return;
-      }
-
-      if (this.activeSwipeId && this.activeSwipeId !== id) {
-        this.activeSwipeId = "";
-      }
-
-      this.touchDirection = "";
-    },
-
     goLogin() {
       uni.navigateTo({
         url: "/pages/login/login"
@@ -381,11 +319,6 @@ export default {
     },
 
     async openConversation(item) {
-      if (this.activeSwipeId === item.id) {
-        this.activeSwipeId = "";
-        return;
-      }
-
       await markConversationRead(item.id);
       uni.navigateTo({
         url: `/pages/chat/detail?conversationId=${item.id}`
@@ -395,7 +328,6 @@ export default {
     async handleQuickTop(item) {
       const ok = await setConversationTop(item.id, !item.isTop);
       if (ok) {
-        this.activeSwipeId = "";
         uni.showToast({ title: item.isTop ? "已取消置顶" : "已置顶", icon: "none" });
         this.loadConversations();
       }
@@ -403,7 +335,6 @@ export default {
 
     async handleQuickRead(item) {
       await markConversationRead(item.id);
-      this.activeSwipeId = "";
       uni.showToast({ title: "已标为已读", icon: "none" });
       this.loadConversations();
     },
@@ -418,12 +349,27 @@ export default {
           }
           const ok = await deleteConversation(item.id);
           if (ok) {
-            this.activeSwipeId = "";
             uni.showToast({ title: "会话已删除", icon: "none" });
             this.loadConversations();
           }
         }
       });
+    },
+
+    // ---- 彩蛋: 连击 banner badge ----
+    onBadgeTap() {
+      if (!_badgeTapper) {
+        _badgeTapper = createTapCounter(7, 500, () => this.triggerEmojiRain());
+      }
+      _badgeTapper.tap();
+    },
+
+    triggerEmojiRain() {
+      this.emojiRainParticles = generateFloatingParticles(15);
+      this.showEmojiRain = true;
+      uni.vibrateShort && uni.vibrateShort({ type: "light" });
+      uni.showToast({ title: getRandomChatSecret(), icon: "none", duration: 3000 });
+      setTimeout(() => { this.showEmojiRain = false; }, 4000);
     },
 
     async handleConversationActions(item) {
@@ -581,58 +527,8 @@ export default {
   padding: 20rpx;
   display: flex;
   gap: 16rpx;
-  position: relative;
-  z-index: 1;
-  transition: transform 0.24s cubic-bezier(0.2, 0.7, 0.2, 1), background 0.15s;
-  will-change: transform;
 }
 
-.swipe-row {
-  position: relative;
-  overflow: hidden;
-}
-
-.chat-item.swiped {
-  transform: translateX(-228rpx);
-}
-
-.swipe-actions {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 12rpx;
-  width: 228rpx;
-  display: flex;
-  align-items: stretch;
-  border-radius: 16rpx;
-  overflow: hidden;
-}
-
-.swipe-btn {
-  flex: 1;
-  color: #fff;
-  font-size: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter 0.15s ease;
-}
-
-.swipe-btn:active {
-  filter: brightness(0.92);
-}
-
-.swipe-btn.top {
-  background: #3a78ff;
-}
-
-.swipe-btn.read {
-  background: #6f89c6;
-}
-
-.swipe-btn.del {
-  background: #e5556d;
-}
 
 .avatar-wrap {
   position: relative;
@@ -744,5 +640,25 @@ export default {
   color: #5f6f8e;
   font-size: 22rpx;
   padding: 2rpx 8rpx;
+}
+
+/* ---- 彩蛋: emoji 雨 ---- */
+.emoji-rain-layer {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 999;
+}
+.emoji-drop {
+  position: absolute;
+  top: -50rpx;
+  animation: emoji-rain-fall linear forwards;
+  opacity: 0;
+}
+@keyframes emoji-rain-fall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  70%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(1200rpx) rotate(360deg); }
 }
 </style>

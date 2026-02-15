@@ -5,18 +5,10 @@
  * - 云优先 + 本地回退
  */
 
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentUserId, wait } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 
 const TRUST_KEY = "cm_trust_scores";
-
-function getCurrentUserId() {
-  return (getStoredUser() || {}).userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function normalizeTrustRecord(item = {}) {
   return {

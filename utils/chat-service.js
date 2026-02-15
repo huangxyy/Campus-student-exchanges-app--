@@ -1,22 +1,11 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentProfile, getCurrentUserId, wait, generateId, createThrottledStorage } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 
+const throttledStorage = createThrottledStorage(200);
+
 const CONVERSATIONS_KEY = "cm_conversations";
 const MESSAGE_KEY_PREFIX = "cm_messages_";
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getCurrentProfile() {
-  return getStoredUser() || {};
-}
-
-function getCurrentUserId() {
-  const user = getCurrentProfile();
-  return user.userId || "";
-}
 
 function getConversationsStorageKey(userId) {
   return `${CONVERSATIONS_KEY}_${userId || "guest"}`;
@@ -47,7 +36,7 @@ function readMessages(userId, conversationId) {
 }
 
 function saveMessages(userId, conversationId, list) {
-  uni.setStorageSync(getMessageStorageKey(userId, conversationId), list);
+  throttledStorage.save(getMessageStorageKey(userId, conversationId), list);
 }
 
 function getConversationCollection() {
@@ -75,7 +64,7 @@ function normalizeConversation(item = {}, currentUserId = "") {
   const peerId = item.peerId || derivedPeerId;
   const peerMeta = participantsMeta[peerId] || {};
   return {
-    id: item.id || item._id || `conv-${Date.now()}`,
+    id: item.id || item._id || generateId("conv"),
     peerId,
     peerName: peerMeta.name || item.peerName || "校园同学",
     peerAvatar: peerMeta.avatar || item.peerAvatar || "https://picsum.photos/seed/default-peer/120/120",
@@ -118,7 +107,7 @@ function normalizeMessage(item = {}, currentUserId = "") {
   const content = item.content || (type === "image" ? "[图片]" : "");
 
   return {
-    id: item.id || item._id || `msg-${Date.now()}`,
+    id: item.id || item._id || generateId("msg"),
     sender,
     type,
     content,
@@ -146,7 +135,7 @@ function ensureSeedConversation(userId) {
     return;
   }
 
-  const id = `conv-${Date.now()}`;
+  const id = generateId("conv");
   const now = Date.now();
   const seededConversation = {
     id,
@@ -826,7 +815,7 @@ export async function sendTextMessage(conversationId, content) {
   }
 
   const message = {
-    id: `msg-${Date.now()}`,
+    id: generateId("msg"),
     sender: "me",
     type: "text",
     content: safeContent,
@@ -861,7 +850,7 @@ async function sendCardMessage(conversationId, type, cardPayload) {
   }
 
   const message = {
-    id: `msg-${Date.now()}`,
+    id: generateId("msg"),
     sender: "me",
     type,
     content: preview,
@@ -986,7 +975,7 @@ export async function sendImageMessage(conversationId, imageUrl) {
   }
 
   const message = {
-    id: `msg-${Date.now()}`,
+    id: generateId("msg"),
     sender: "me",
     type: "image",
     content: preview,

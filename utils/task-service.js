@@ -1,5 +1,7 @@
 import { getCloudDatabase } from "@/utils/cloud";
 import { showError, withGuard } from "@/utils/error-handler";
+import { generateId } from "@/utils/common";
+import { sanitizeText } from "@/utils/sanitize";
 
 const TASK_KEY = "cm_tasks";
 
@@ -60,7 +62,7 @@ const defaultTasks = [
 function normalizeTask(task = {}) {
   const normalizedType = task.type === "代取" ? "代取快递" : task.type;
   return {
-    id: task.id || task._id || `task-${Date.now()}`,
+    id: task.id || task._id || generateId("task"),
     title: task.title || "",
     type: normalizedType || "其他",
     reward: Number(task.reward || 0),
@@ -461,13 +463,13 @@ export async function publishTask(payload) {
   ensureTasks();
   const list = readTasks();
   const task = {
-    id: `task-${Date.now()}`,
-    title: payload.title,
+    id: generateId("task"),
+    title: sanitizeText(payload.title, { maxLength: 40 }),
     type: payload.type,
     reward: Number(payload.reward || 0),
     time: payload.time,
-    location: payload.location,
-    description: payload.description || "",
+    location: sanitizeText(payload.location, { maxLength: 40 }),
+    description: sanitizeText(payload.description || "", { maxLength: 300 }),
     deadlineAt: payload.deadlineAt || null,
     distanceKm: typeof payload.distanceKm === "number" ? payload.distanceKm : null,
     requirements: Array.isArray(payload.requirements) ? payload.requirements : [],

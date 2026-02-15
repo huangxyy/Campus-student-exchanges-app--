@@ -1,5 +1,9 @@
 import { mockProducts } from "@/utils/mock-products";
 import { getCloudDatabase, isCloudReady } from "@/utils/cloud";
+import { generateId as generateUniqueId, getCurrentUserId, createRateLimiter } from "@/utils/common";
+import { sanitizeText, sanitizeNumber } from "@/utils/sanitize";
+
+const publishLimiter = createRateLimiter(3000);
 
 const CUSTOM_PRODUCT_KEY = "cm_custom_products";
 const CLOUD_PRODUCT_FOLDER = "products";
@@ -410,25 +414,25 @@ export async function getProductById(id) {
 
 export function createProductDraft(payload, options = {}) {
   const { generateId = true } = options;
-  const id = generateId ? `prod-${Date.now()}` : "";
+  const id = generateId ? generateUniqueId("prod") : "";
   const now = Date.now();
   const latitude = toNumberOrNull(payload.latitude ?? payload.locationLatitude);
   const longitude = toNumberOrNull(payload.longitude ?? payload.locationLongitude);
   return {
     _id: id,
-    title: payload.title,
-    description: payload.description,
-    price: Number(payload.price || 0),
-    originalPrice: Number(payload.originalPrice || 0),
+    title: sanitizeText(payload.title, { maxLength: 40 }),
+    description: sanitizeText(payload.description, { maxLength: 300 }),
+    price: sanitizeNumber(payload.price, 0.01, 99999),
+    originalPrice: sanitizeNumber(payload.originalPrice, 0, 99999),
     category: payload.category,
     condition: payload.condition || "9成新",
     images: payload.images || [],
-    location: payload.location || "校内自提",
-    tags: payload.tags || [],
+    location: sanitizeText(payload.location || "校内自提", { maxLength: 30 }),
+    tags: (payload.tags || []).map((t) => sanitizeText(t, { maxLength: 20 })),
     latitude,
     longitude,
-    locationAddress: payload.locationAddress || "",
-    collegeTag: payload.collegeTag || "",
+    locationAddress: sanitizeText(payload.locationAddress || "", { maxLength: 60 }),
+    collegeTag: sanitizeText(payload.collegeTag || "", { maxLength: 20 }),
     certified: !!payload.certified,
     status: "available",
     views: 0,
@@ -443,6 +447,10 @@ export function createProductDraft(payload, options = {}) {
 }
 
 export async function publishProduct(payload) {
+  if (!publishLimiter.check("publish")) {
+    throw new Error("操作过于频繁，请稍后再试");
+  }
+
   if (isCloudDatabaseReady()) {
     const cloudDraft = await publishProductToCloud(payload).catch(() => null);
     if (cloudDraft) {
@@ -526,6 +534,18 @@ export async function updateProductStatus(productId, status) {
     return false;
   }
 
+  const userId = getCurrentUserId();
+  if (!userId) {
+    return false;
+  }
+
+  // 本地所有权校验
+  const product = getAllProducts().find((p) => p._id === productId);
+  if (product && product.userId && product.userId !== userId) {
+    console.warn("[ProductService] updateProductStatus: permission denied");
+    return false;
+  }
+
   if (isCloudDatabaseReady()) {
     const cloudUpdated = await updateProductStatusInCloud(productId, status).catch(() => false);
     if (cloudUpdated) {
@@ -544,6 +564,18 @@ export async function updateProductStatus(productId, status) {
 
 export async function deleteProduct(productId) {
   if (!productId) {
+    return false;
+  }
+
+  const userId = getCurrentUserId();
+  if (!userId) {
+    return false;
+  }
+
+  // 本地所有权校验
+  const product = getAllProducts().find((p) => p._id === productId);
+  if (product && product.userId && product.userId !== userId) {
+    console.warn("[ProductService] deleteProduct: permission denied");
     return false;
   }
 

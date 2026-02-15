@@ -1,0 +1,83 @@
+name: Bug Report
+description: Report a reproducible bug
+title: "[Bug] "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题。请尽量提供可复现信息，帮助我们更快定位。
+
+  - type: input
+    id: summary
+    attributes:
+      label: 问题概述
+      description: 一句话描述问题
+      placeholder: 例如：任务详情页点击接单后无响应
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请提供稳定复现路径
+      placeholder: |
+        1. 打开 xxx 页面
+        2. 点击 xxx
+        3. 出现 xxx
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果
+      placeholder: 应该出现什么结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      placeholder: 实际发生了什么
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: 影响级别
+      options:
+        - blocker (阻塞主要流程)
+        - high (高影响)
+        - medium (中影响)
+        - low (低影响)
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 系统/微信开发者工具版本/小程序基础库版本
+      placeholder: 例如 Windows 11, DevTools 1.06.x, BaseLib 3.2.x
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志与截图
+      description: 粘贴关键报错日志，或附截图/录屏
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已搜索过现有 Issue，确认不是重复问题
+          required: true
+        - label: 我提供了可复现步骤
+          required: true

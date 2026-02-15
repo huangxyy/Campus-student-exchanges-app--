@@ -1,30 +1,51 @@
 <template>
   <view class="login-page">
-    <view class="hero-bg"></view>
-
-    <view class="hero card anim-slide-down">
-      <view class="brand-icon anim-float">🎓</view>
-      <view class="title">校园跳蚤市场</view>
-      <view class="subtitle">让闲置流动起来，让任务更高效</view>
+    <view class="page-bubbles">
+      <view class="bubble bubble-1 anim-float"></view>
+      <view class="bubble bubble-2 anim-float-x"></view>
+      <view class="bubble bubble-3 anim-float"></view>
+      <view class="bubble bubble-4 anim-float-x"></view>
+      <view class="bubble bubble-5 anim-breathe"></view>
     </view>
 
-    <view class="features anim-slide-up anim-d2">
-      <view class="feature-item" v-for="item in features" :key="item.icon">
-        <view class="feature-icon">{{ item.icon }}</view>
+    <view class="hero glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="brand-icon anim-bounce-in">
+        <view class="brand-ring anim-ring"></view>
+        <text class="brand-emoji">🎓</text>
+      </view>
+      <view class="title anim-fade-in anim-d1">校园跳蚤市场</view>
+      <view class="subtitle anim-fade-in anim-d2">让闲置流动起来，让任务更高效</view>
+    </view>
+
+    <view class="features anim-slide-up anim-d3">
+      <view
+        v-for="(item, idx) in features"
+        :key="item.icon"
+        :class="['feature-item', 'glass', 'card-press', 'anim-slide-up', 'anim-d' + (idx + 3)]"
+        style="border-radius: 20rpx;"
+      >
+        <view class="feature-icon" :class="item.tone">{{ item.icon }}</view>
         <view class="feature-text">
           <view class="feature-title">{{ item.title }}</view>
           <view class="feature-desc">{{ item.desc }}</view>
         </view>
+        <view class="feature-dot" :class="item.tone + '-dot'"></view>
       </view>
     </view>
 
-    <button class="login-btn btn-bounce anim-scale-in anim-d4" :loading="loading" @tap="handleLogin">
+    <button class="login-btn btn-bounce anim-scale-in anim-d6" :loading="loading" @tap="handleLogin">
+      <text v-if="!loading" class="btn-icon">✦</text>
       {{ loading ? "登录中..." : "微信一键登录" }}
     </button>
 
-    <view class="tips anim-fade-in anim-d5">首次登录后可在「我的」页面补充学号与联系方式</view>
+    <view class="tips anim-fade-in anim-d7">首次登录后可在「我的」页面补充学号与联系方式</view>
 
-    <view class="policy anim-fade-in anim-d6">登录代表你同意《用户协议》与《隐私政策》</view>
+    <view class="policy anim-fade-in anim-d8">
+      登录代表你同意
+      <text class="policy-link" @tap="goAgreement">《用户协议》</text>
+      与
+      <text class="policy-link" @tap="goPrivacy">《隐私政策》</text>
+    </view>
   </view>
 </template>
 
@@ -37,9 +58,9 @@ export default {
     return {
       loading: false,
       features: [
-        { icon: "🛒", title: "二手好物", desc: "校内面交更安心" },
-        { icon: "📌", title: "任务互助", desc: "代取代课快速抢单" },
-        { icon: "💬", title: "实时沟通", desc: "消息秒达不错过" }
+        { icon: "🛒", title: "二手好物", desc: "校内面交更安心", tone: "ft-blue" },
+        { icon: "📌", title: "任务互助", desc: "代取代课快速抢单", tone: "ft-amber" },
+        { icon: "💬", title: "实时沟通", desc: "消息秒达不错过", tone: "ft-green" }
       ]
     };
   },
@@ -54,6 +75,12 @@ export default {
   },
 
   methods: {
+    goAgreement() {
+      uni.navigateTo({ url: "/pages/legal/agreement" });
+    },
+    goPrivacy() {
+      uni.navigateTo({ url: "/pages/legal/privacy" });
+    },
     async handleLogin() {
       if (this.loading) {
         return;
@@ -103,129 +130,188 @@ export default {
   padding: 80rpx 36rpx;
   overflow: hidden;
   background:
-    radial-gradient(circle at 20% 15%, rgba(47, 107, 255, 0.18), rgba(47, 107, 255, 0) 55%),
-    radial-gradient(circle at 85% 30%, rgba(19, 194, 163, 0.16), rgba(19, 194, 163, 0) 50%),
-    radial-gradient(circle at 50% 80%, rgba(120, 80, 255, 0.08), rgba(120, 80, 255, 0) 40%),
-    #f5f7fc;
+    radial-gradient(circle at 18% 12%, rgba(47, 107, 255, 0.18), rgba(47, 107, 255, 0) 50%),
+    radial-gradient(circle at 82% 28%, rgba(19, 194, 163, 0.16), rgba(19, 194, 163, 0) 45%),
+    radial-gradient(circle at 50% 75%, rgba(124, 58, 237, 0.10), rgba(124, 58, 237, 0) 40%),
+    #f0f4fc;
 }
 
-.hero-bg {
+.page-bubbles {
   position: absolute;
-  top: -100rpx;
-  right: -60rpx;
-  width: 400rpx;
-  height: 400rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(47, 107, 255, 0.1), rgba(47, 107, 255, 0));
+  top: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none;
+  overflow: hidden;
+}
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.35;
+}
+.bubble-1 {
+  width: 180rpx; height: 180rpx;
+  top: -30rpx; right: -40rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.3), transparent 70%);
+  filter: blur(30rpx);
+}
+.bubble-2 {
+  width: 120rpx; height: 120rpx;
+  top: 260rpx; left: -20rpx;
+  background: radial-gradient(circle, rgba(19, 194, 163, 0.3), transparent 70%);
+  filter: blur(25rpx);
+}
+.bubble-3 {
+  width: 90rpx; height: 90rpx;
+  bottom: 300rpx; right: 40rpx;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25), transparent 70%);
+  filter: blur(20rpx);
+}
+.bubble-4 {
+  width: 60rpx; height: 60rpx;
+  top: 500rpx; left: 80rpx;
+  background: radial-gradient(circle, rgba(250, 170, 50, 0.3), transparent 70%);
+  filter: blur(16rpx);
+}
+.bubble-5 {
+  width: 100rpx; height: 100rpx;
+  bottom: 150rpx; left: 50%;
+  margin-left: -50rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.15), transparent 70%);
+  filter: blur(20rpx);
 }
 
 .hero {
   position: relative;
-  padding: 44rpx 36rpx;
+  padding: 48rpx 36rpx 40rpx;
   text-align: center;
-  background:
-    linear-gradient(140deg, rgba(231, 239, 255, 0.96), rgba(243, 247, 255, 0.98)),
-    #ffffff;
-  border: 1rpx solid #e4ebfb;
+  overflow: hidden;
 }
 
 .brand-icon {
-  width: 100rpx;
-  height: 100rpx;
-  margin: 0 auto 20rpx;
-  border-radius: 30rpx;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1rpx solid #e3eaf9;
+  position: relative;
+  width: 110rpx;
+  height: 110rpx;
+  margin: 0 auto 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 50rpx;
-  box-shadow: 0 8rpx 24rpx rgba(47, 107, 255, 0.12);
+}
+.brand-ring {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: 32rpx;
+  border: 2rpx solid rgba(47, 107, 255, 0.2);
+}
+.brand-emoji {
+  position: relative;
+  font-size: 54rpx;
+  width: 90rpx; height: 90rpx;
+  border-radius: 26rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1rpx solid rgba(228, 235, 251, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 28rpx rgba(47, 107, 255, 0.15);
 }
 
 .title {
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #1d2433;
+  font-size: 46rpx;
+  font-weight: 800;
+  color: #1a2540;
   letter-spacing: 2rpx;
 }
 
 .subtitle {
   margin-top: 14rpx;
-  color: #5a677f;
-  font-size: 27rpx;
+  color: #5a6a88;
+  font-size: 26rpx;
   line-height: 1.6;
 }
 
-/* --- 特性亮点 --- */
 .features {
-  margin-top: 30rpx;
+  margin-top: 32rpx;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .feature-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 20rpx 24rpx;
-  border-radius: $radius-card;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1rpx solid #e9eef8;
-  box-shadow: 0 4rpx 12rpx rgba(24, 37, 66, 0.04);
+  padding: 22rpx 24rpx;
+  overflow: hidden;
 }
 
 .feature-icon {
-  width: 60rpx;
-  height: 60rpx;
+  width: 62rpx;
+  height: 62rpx;
   border-radius: 18rpx;
-  background: linear-gradient(140deg, rgba(231, 239, 255, 0.95), rgba(243, 247, 255, 0.96));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 30rpx;
   flex-shrink: 0;
 }
+.feature-icon.ft-blue  { background: linear-gradient(140deg, rgba(224, 236, 255, 0.95), rgba(240, 246, 255, 0.96)); }
+.feature-icon.ft-amber { background: linear-gradient(140deg, rgba(255, 242, 224, 0.95), rgba(255, 250, 240, 0.96)); }
+.feature-icon.ft-green { background: linear-gradient(140deg, rgba(224, 248, 240, 0.95), rgba(240, 252, 248, 0.96)); }
+
+.feature-dot {
+  position: absolute;
+  width: 80rpx; height: 80rpx;
+  border-radius: 50%;
+  right: -16rpx; bottom: -16rpx;
+  opacity: 0.2;
+  pointer-events: none;
+}
+.ft-blue-dot  { background: radial-gradient(circle, rgba(47, 107, 255, 0.5), transparent); }
+.ft-amber-dot { background: radial-gradient(circle, rgba(250, 170, 50, 0.5), transparent); }
+.ft-green-dot { background: radial-gradient(circle, rgba(19, 194, 163, 0.5), transparent); }
 
 .feature-text {
   flex: 1;
 }
 
 .feature-title {
-  color: #1f2a3c;
+  color: #1a2540;
   font-size: 27rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .feature-desc {
   margin-top: 4rpx;
-  color: #7a869f;
+  color: #7a8ba4;
   font-size: 22rpx;
 }
 
-/* --- 登录按钮 --- */
 .login-btn {
   margin-top: 44rpx;
-  height: 92rpx;
-  border-radius: 46rpx;
-  background: linear-gradient(135deg, #2f6bff, #2459d6);
+  height: 96rpx;
+  border-radius: 48rpx;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   color: #fff;
   font-size: 30rpx;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
-  box-shadow: 0 8rpx 24rpx rgba(47, 107, 255, 0.3);
+  box-shadow: 0 8rpx 28rpx rgba(47, 107, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
 }
-
-.login-btn::after {
-  border: none;
+.login-btn::after { border: none; }
+.btn-icon {
+  font-size: 28rpx;
+  display: inline-block;
+  animation: anim-pulse 2s ease-in-out infinite;
 }
 
 .tips {
-  margin-top: 28rpx;
+  margin-top: 30rpx;
   text-align: center;
-  color: #8b95aa;
+  color: #8a95ac;
   font-size: 23rpx;
 }
 
@@ -234,5 +320,9 @@ export default {
   text-align: center;
   color: #a0a8b8;
   font-size: 21rpx;
+}
+.policy-link {
+  color: #5a82cc;
+  font-weight: 500;
 }
 </style>

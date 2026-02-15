@@ -1,19 +1,12 @@
-import { getStoredUser } from "@/utils/auth";
+import { getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
+import { sanitizeText } from "@/utils/sanitize";
 
 const REPORTS_KEY = "cm_reports";
 
-function getCurrentUserId() {
-  return (getStoredUser() || {}).userId || "";
-}
-
-function wait(ms = 80) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeReport(item = {}) {
   return {
-    id: item.id || item._id || `report-${Date.now()}`,
+    id: item.id || item._id || generateId("report"),
     targetType: item.targetType || "",
     targetId: item.targetId || "",
     reporterId: item.reporterId || "",
@@ -56,7 +49,11 @@ export async function submitReport(payload) {
     throw new Error("User is not logged in");
   }
 
-  const fullPayload = { ...payload, reporterId: userId };
+  const fullPayload = {
+    ...payload,
+    reporterId: userId,
+    detail: sanitizeText(payload.detail || "", { maxLength: 500 }),
+  };
 
   if (!fullPayload.targetType || !fullPayload.targetId || !fullPayload.reason) {
     throw new Error("Missing required report fields");
@@ -69,7 +66,7 @@ export async function submitReport(payload) {
 
   const report = normalizeReport({
     ...fullPayload,
-    id: `report-${Date.now()}`,
+    id: generateId("report"),
     createdAt: Date.now()
   });
 

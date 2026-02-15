@@ -1,4 +1,5 @@
 import { isCloudReady } from "@/utils/cloud";
+import { generateId } from "@/utils/common";
 
 const USER_KEY = "cm_user";
 const TOKEN_KEY = "cm_token";
@@ -39,7 +40,7 @@ export async function mockLoginWithProfile(profile = {}) {
   const oldUser = getStoredUser();
 
   const user = {
-    userId: oldUser?.userId || `user-${Date.now()}`,
+    userId: oldUser?.userId || generateId("user"),
     nickName: profile.nickName || "校园用户",
     avatar: profile.avatarUrl || "https://picsum.photos/seed/default-avatar/120/120",
     rating: oldUser?.rating || 5,
