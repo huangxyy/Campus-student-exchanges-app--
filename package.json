@@ -1,0 +1,21 @@
+{
+  "name": "campus-student-exchanges-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Campus market mini-program based on uni-app",
+  "scripts": {
+    "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni -p mp-weixin",
+    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4080720251210001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4080720251210001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4080720251210001",
+    "cross-env": "^7.0.3",
+    "pinia": "^2.1.7",
+    "sass": "^1.83.0",
+    "uview-plus": "^3.3.53",
+    "vite": "5.2.8",
+    "vue": "^3.4.21"
+  }
+}

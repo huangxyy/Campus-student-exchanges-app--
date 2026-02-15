@@ -1,0 +1,257 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {}
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "校园跳蚤市场"
+      }
+    },
+    {
+      "path": "pages/tasks/list",
+      "style": {
+        "navigationBarTitleText": "任务大厅",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/chat/list",
+      "style": {
+        "navigationBarTitleText": "消息"
+      }
+    },
+    {
+      "path": "pages/chat/detail",
+      "style": {
+        "navigationBarTitleText": "聊天"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/profile/my-products",
+      "style": {
+        "navigationBarTitleText": "我的商品"
+      }
+    },
+    {
+      "path": "pages/profile/favorites",
+      "style": {
+        "navigationBarTitleText": "我的收藏"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "微信登录"
+      }
+    },
+    {
+      "path": "pages/products/list",
+      "style": {
+        "navigationBarTitleText": "商品列表",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/products/detail",
+      "style": {
+        "navigationBarTitleText": "商品详情"
+      }
+    },
+    {
+      "path": "pages/products/publish",
+      "style": {
+        "navigationBarTitleText": "发布商品"
+      }
+    },
+    {
+      "path": "pages/tasks/detail",
+      "style": {
+        "navigationBarTitleText": "任务详情"
+      }
+    },
+    {
+      "path": "pages/tasks/express",
+      "style": {
+        "navigationBarTitleText": "快递代取专区",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/tasks/publish",
+      "style": {
+        "navigationBarTitleText": "发布任务"
+      }
+    },
+    {
+      "path": "pages/tasks/my",
+      "style": {
+        "navigationBarTitleText": "我的任务"
+      }
+    },
+    {
+      "path": "pages/want/list",
+      "style": {
+        "navigationBarTitleText": "求购广场",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/want/publish",
+      "style": {
+        "navigationBarTitleText": "发布求购"
+      }
+    },
+    {
+      "path": "pages/want/subscribe",
+      "style": {
+        "navigationBarTitleText": "到货提醒"
+      }
+    },
+    {
+      "path": "pages/profile/my-want",
+      "style": {
+        "navigationBarTitleText": "我的求购"
+      }
+    },
+    {
+      "path": "pages/profile/my-orders",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/orders/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/feeds/list",
+      "style": {
+        "navigationBarTitleText": "校园动态",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/feeds/publish",
+      "style": {
+        "navigationBarTitleText": "发布动态"
+      }
+    },
+    {
+      "path": "pages/feeds/detail",
+      "style": {
+        "navigationBarTitleText": "动态详情"
+      }
+    },
+    {
+      "path": "pages/points/index",
+      "style": {
+        "navigationBarTitleText": "积分中心"
+      }
+    },
+    {
+      "path": "pages/points/ranking",
+      "style": {
+        "navigationBarTitleText": "积分排行榜"
+      }
+    },
+    {
+      "path": "pages/wiki/index",
+      "style": {
+        "navigationBarTitleText": "校园维基",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/wiki/detail",
+      "style": {
+        "navigationBarTitleText": "维基详情"
+      }
+    },
+    {
+      "path": "pages/wiki/submit",
+      "style": {
+        "navigationBarTitleText": "投稿维基"
+      }
+    },
+    {
+      "path": "pages/activity/index",
+      "style": {
+        "navigationBarTitleText": "活动专题"
+      }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationBarTitleText": "设置"
+      }
+    },
+    {
+      "path": "pages/profile/user",
+      "style": {
+        "navigationBarTitleText": "用户主页"
+      }
+    },
+    {
+      "path": "pages/legal/privacy",
+      "style": {
+        "navigationBarTitleText": "隐私政策"
+      }
+    },
+    {
+      "path": "pages/legal/agreement",
+      "style": {
+        "navigationBarTitleText": "用户协议"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#7f8797",
+    "selectedColor": "#2f6bff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/tasks/list",
+        "text": "任务",
+        "iconPath": "static/tabbar/task.png",
+        "selectedIconPath": "static/tabbar/task-active.png"
+      },
+      {
+        "pagePath": "pages/chat/list",
+        "text": "消息",
+        "iconPath": "static/tabbar/chat.png",
+        "selectedIconPath": "static/tabbar/chat-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/profile.png",
+        "selectedIconPath": "static/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f6f7fb",
+    "animationType": "slide-in-right",
+    "animationDuration": 280
+  }
+}

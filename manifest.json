@@ -1,0 +1,26 @@
+{
+  "name": "校园跳蚤市场",
+  "appid": "__UNI__CAMPUS_MARKET",
+  "description": "校园二手交易与任务发布小程序",
+  "versionName": "0.1.0",
+  "versionCode": 100,
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true
+  },
+  "mp-weixin": {
+    "appid": "wxc1b7e07d4f7c94b0",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "cloudfunctionRoot": "cloudfunctions/",
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于获取您的位置以便就近交易"
+      }
+    }
+  }
+}

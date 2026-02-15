@@ -1,0 +1,50 @@
+@import "uview-plus/theme.scss";
+
+$app-bg: #f6f7fb;
+$primary-color: #2f6bff;
+$primary-strong: #2459d6;
+$primary-soft: #e8efff;
+$success-color: #13c2a3;
+$warning-color: #fa8c16;
+$danger-color: #e25269;
+$text-primary: #1f2430;
+$text-secondary: #606b80;
+$text-placeholder: #a7afbe;
+$line-color: #e9ecf3;
+$card-bg: #ffffff;
+$radius-card: 24rpx;
+$radius-pill: 999rpx;
+$shadow-soft: 0 10rpx 24rpx rgba(24, 37, 66, 0.08);
+
+// 注意：以下 mixin 可在组件中 @include 使用，避免在 uni.scss 中直接定义 class
+// 否则每个组件编译后都会重复输出这些样式
+@mixin page-container {
+  padding: 24rpx;
+}
+
+@mixin card-style {
+  background: $card-bg;
+  border-radius: $radius-card;
+  border: 1rpx solid #e6ecf8;
+  box-shadow: $shadow-soft;
+}
+
+@mixin token-chip($bg: #edf2ff, $color: #4b62a8) {
+  height: 42rpx;
+  line-height: 42rpx;
+  padding: 0 14rpx;
+  border-radius: $radius-pill;
+  background: $bg;
+  color: $color;
+  font-size: 21rpx;
+}
+
+@mixin token-btn-base {
+  margin: 0;
+  height: 88rpx;
+  line-height: 88rpx;
+  border: none;
+  border-radius: 44rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+}
