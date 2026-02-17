@@ -2,6 +2,8 @@ import { getCloudDatabase } from "@/utils/cloud";
 import { showError, withGuard } from "@/utils/error-handler";
 import { generateId } from "@/utils/common";
 import { sanitizeText } from "@/utils/sanitize";
+import { addPoints } from "@/utils/points-service";
+import { recordTaskCompletion } from "@/utils/trust-service";
 
 const TASK_KEY = "cm_tasks";
 
@@ -565,6 +567,9 @@ export async function getTaskUserStats(userId) {
 export async function updateTaskStatus(taskId, status, operatorUserId) {
   const cloudResult = await updateTaskStatusInCloud(taskId, status, operatorUserId).catch(() => null);
   if (typeof cloudResult === "boolean") {
+    if (cloudResult && status === "completed") {
+      await handleTaskCompletionSideEffects(taskId).catch(() => null);
+    }
     return cloudResult;
   }
 
@@ -595,6 +600,20 @@ export async function updateTaskStatus(taskId, status, operatorUserId) {
     updatedAt: now
   });
   saveTasks(list);
+
+  if (status === "completed") {
+    await handleTaskCompletionSideEffects(taskId).catch(() => null);
+  }
+
   await wait();
   return true;
+}
+
+async function handleTaskCompletionSideEffects(taskId) {
+  try {
+    await addPoints("complete_task", taskId).catch(() => null);
+    await recordTaskCompletion().catch(() => null);
+  } catch (error) {
+    console.warn("[TaskService] completion side effect error:", error);
+  }
 }

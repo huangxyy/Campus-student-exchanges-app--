@@ -55,7 +55,8 @@
         <button :class="['ui-btn', favorited ? 'ui-btn-secondary active-btn' : 'ui-btn-ghost']" @tap="collect">
           {{ favorited ? "已收藏" : "收藏" }}
         </button>
-        <button class="ui-btn ui-btn-primary" @tap="contact">联系卖家</button>
+        <button class="ui-btn ui-btn-ghost" @tap="contact">联系卖家</button>
+        <button v-if="!isOwner" class="ui-btn ui-btn-primary" :loading="ordering" @tap="buyNow">立即购买</button>
       </view>
     </template>
 
@@ -76,6 +77,7 @@ import { getProductById, increaseProductViews } from "@/utils/product-service";
 import { useUserStore } from "@/store/user";
 import { createOrGetConversationByProduct } from "@/utils/chat-service";
 import { isProductFavorited, toggleFavorite } from "@/utils/favorite-service";
+import { createOrder } from "@/utils/order-service";
 
 export default {
   components: {
@@ -88,7 +90,8 @@ export default {
       loading: false,
       product: null,
       favorited: false,
-      descExpanded: false
+      descExpanded: false,
+      ordering: false
     };
   },
 
@@ -99,6 +102,11 @@ export default {
 
     isLogin() {
       return this.userStore.isLogin;
+    },
+
+    isOwner() {
+      const myId = this.userStore.profile?.userId || "";
+      return !!myId && !!this.product && this.product.userId === myId;
     },
 
     imageList() {
@@ -221,6 +229,55 @@ export default {
           icon: "none"
         });
       }
+    },
+
+    async buyNow() {
+      if (!this.isLogin) {
+        uni.navigateTo({ url: "/pages/login/login" });
+        return;
+      }
+
+      const profile = this.userStore.profile || {};
+      if (!profile.userId) {
+        uni.showToast({ title: "登录信息异常，请重新登录", icon: "none" });
+        return;
+      }
+
+      if (this.isOwner) {
+        uni.showToast({ title: "不能购买自己的商品", icon: "none" });
+        return;
+      }
+
+      if (this.product.status !== "available") {
+        uni.showToast({ title: "商品已下架或已售出", icon: "none" });
+        return;
+      }
+
+      uni.showModal({
+        title: "确认购买",
+        content: `确定购买「${this.product.title}」，价格 ¥${this.product.price}？`,
+        success: async (res) => {
+          if (!res.confirm) { return; }
+          this.ordering = true;
+          try {
+            const order = await createOrder({
+              productId: this.product._id,
+              productTitle: this.product.title,
+              productPrice: this.product.price,
+              sellerId: this.product.userId,
+              sellerName: this.product.userName || "卖家"
+            });
+            uni.showToast({ title: "下单成功", icon: "success" });
+            setTimeout(() => {
+              uni.navigateTo({ url: `/pages/orders/detail?id=${order.id}` });
+            }, 500);
+          } catch (error) {
+            uni.showToast({ title: error?.message || "下单失败", icon: "none" });
+          } finally {
+            this.ordering = false;
+          }
+        }
+      });
     },
 
     goBackToList() {

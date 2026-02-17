@@ -1,6 +1,7 @@
 import { getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
+import { recordReportAgainst } from "@/utils/trust-service";
 
 const REPORTS_KEY = "cm_reports";
 
@@ -61,6 +62,10 @@ export async function submitReport(payload) {
 
   const cloudReport = await submitReportToCloud(fullPayload).catch(() => null);
   if (cloudReport) {
+    // Penalize the reported user's trust score (async, non-blocking)
+    if (fullPayload.targetId) {
+      recordReportAgainst(fullPayload.targetId).catch(() => null);
+    }
     return cloudReport;
   }
 
@@ -76,6 +81,11 @@ export async function submitReport(payload) {
     uni.setStorageSync(REPORTS_KEY, all);
   } catch (error) {
     // ignore
+  }
+
+  // Penalize the reported user's trust score (async, non-blocking)
+  if (fullPayload.targetId) {
+    recordReportAgainst(fullPayload.targetId).catch(() => null);
   }
 
   await wait();

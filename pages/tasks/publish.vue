@@ -97,6 +97,7 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { publishTask } from "@/utils/task-service";
+import { addPoints } from "@/utils/points-service";
 
 export default {
   data() {
@@ -233,7 +234,7 @@ export default {
       try {
         const requirements = this.buildRequirements();
 
-        await publishTask({
+        const task = await publishTask({
           title: this.form.title,
           type: this.form.type,
           reward: this.form.reward,
@@ -247,6 +248,8 @@ export default {
           publisher: profile.nickName || "校园用户",
           publisherId: profile.userId
         });
+
+        await addPoints("publish_task", task.id || "").catch(() => null);
 
         uni.showToast({
           title: "发布成功",

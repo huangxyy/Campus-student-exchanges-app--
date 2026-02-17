@@ -129,6 +129,7 @@ import { productCategories } from "@/utils/mock-products";
 import { useUserStore } from "@/store/user";
 import { publishProduct } from "@/utils/product-service";
 import { findMatchingWants } from "@/utils/want-service";
+import { addPoints } from "@/utils/points-service";
 
 export default {
   data() {
@@ -556,7 +557,7 @@ export default {
 
       this.submitting = true;
       try {
-        await publishProduct({
+        const product = await publishProduct({
           title: this.formData.title,
           category: this.formData.category,
           condition: this.formData.condition,
@@ -576,6 +577,8 @@ export default {
           userAvatar: profile.avatar || "https://picsum.photos/seed/default-avatar/120/120",
           aiGenerated: finalDescription.includes("【AI建议文案】")
         });
+
+        await addPoints("publish_product", product._id || "").catch(() => null);
 
         this.submitting = false;
 

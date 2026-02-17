@@ -2,6 +2,9 @@ import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/c
 import { getCloudDatabase } from "@/utils/cloud";
 import { showError, withGuard } from "@/utils/error-handler";
 import { sanitizeText } from "@/utils/sanitize";
+import { updateProductStatus } from "@/utils/product-service";
+import { addPoints } from "@/utils/points-service";
+import { recordOrderCompletion } from "@/utils/trust-service";
 
 const ORDERS_KEY = "cm_orders";
 const REVIEWS_KEY = "cm_reviews";
@@ -46,7 +49,7 @@ const ORDER_STATUS_TRANSITIONS = {
   pending: ["meet_confirmed", "cancelled"],
   meet_confirmed: ["paid_confirmed", "cancelled"],
   paid_confirmed: ["received_confirmed", "cancelled"],
-  received_confirmed: ["completed"],
+  received_confirmed: ["completed", "cancelled"],
   completed: [],
   cancelled: []
 };
@@ -285,6 +288,10 @@ export async function createOrder(payload) {
 
   const cloudOrder = await createOrderInCloud(fullPayload).catch(() => null);
   if (cloudOrder) {
+    // Mark product as reserved after order creation
+    if (fullPayload.productId) {
+      updateProductStatus(fullPayload.productId, "reserved").catch(() => null);
+    }
     return cloudOrder;
   }
 
@@ -298,6 +305,12 @@ export async function createOrder(payload) {
   const list = readOrders();
   list.unshift(order);
   saveOrders(list);
+
+  // Mark product as reserved after order creation
+  if (fullPayload.productId) {
+    updateProductStatus(fullPayload.productId, "reserved").catch(() => null);
+  }
+
   await wait();
   return order;
 }
@@ -352,8 +365,17 @@ export async function updateOrderStatus(orderId, status) {
     return false;
   }
 
+  // Get order details first to pass productId to side effects
+  let orderForSideEffects = null;
+  if (status === "cancelled" || status === "completed") {
+    orderForSideEffects = await getOrder(orderId).catch(() => null);
+  }
+
   const cloudResult = await updateOrderStatusInCloud(orderId, status, userId).catch(() => null);
   if (typeof cloudResult === "boolean") {
+    if (cloudResult) {
+      await handleOrderStatusSideEffects(orderId, status, orderForSideEffects?.productId);
+    }
     return cloudResult;
   }
 
@@ -391,8 +413,30 @@ export async function updateOrderStatus(orderId, status) {
 
   list.splice(idx, 1, { ...current, ...patch });
   saveOrders(list);
+
+  await handleOrderStatusSideEffects(orderId, status, current.productId);
+
   await wait();
   return true;
+}
+
+async function handleOrderStatusSideEffects(orderId, status, productId) {
+  try {
+    if (status === "completed") {
+      // Award points to both buyer & seller
+      await addPoints("complete_order", orderId).catch(() => null);
+      // Update trust score
+      await recordOrderCompletion().catch(() => null);
+    }
+
+    if (status === "cancelled" && productId) {
+      // Re-release the product back to available
+      await updateProductStatus(productId, "available").catch(() => null);
+    }
+  } catch (error) {
+    // Side effects should not block the main operation
+    console.warn("[OrderService] side effect error:", error);
+  }
 }
 
 export async function submitReview(payload) {
@@ -410,6 +454,7 @@ export async function submitReview(payload) {
 
   const cloudReview = await submitReviewToCloud(fullPayload).catch(() => null);
   if (cloudReview) {
+    await addPoints("submit_review", fullPayload.orderId).catch(() => null);
     return cloudReview;
   }
 
@@ -429,6 +474,7 @@ export async function submitReview(payload) {
   });
   existing.push(review);
   saveReviews(existing);
+  await addPoints("submit_review", fullPayload.orderId).catch(() => null);
   await wait();
   return review;
 }

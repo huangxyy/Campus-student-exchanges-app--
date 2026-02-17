@@ -104,6 +104,9 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
+import { queryProductsByUser } from "@/utils/product-service";
+import { listMyTasks } from "@/utils/task-service";
+import { listFavorites } from "@/utils/favorite-service";
 import { createTapCounter, getRandomAvatarSecret, getRandomFunFact } from "@/utils/easter-eggs";
 
 let _ratingTapper = null;
@@ -113,6 +116,9 @@ export default {
     return {
       trustScore: 0,
       trustLevel: { level: "", color: "#8a93a7", icon: "" },
+      productCount: 0,
+      taskCount: 0,
+      favoriteCount: 0,
       avatarSpinning: false,
       menuItems: [
         { key: "products", icon: "🛒", label: "我的商品", desc: "管理在售与已下架商品", tone: "tone-blue" },
@@ -138,21 +144,23 @@ export default {
     },
 
     profile() {
-      return (
-        this.userStore.profile || {
-          nickName: "校园用户",
-          avatar: "https://picsum.photos/seed/profile-default/120/120",
-          rating: 5,
-          productCount: 0,
-          taskCount: 0,
-          favoriteCount: 0
-        }
-      );
+      const base = this.userStore.profile || {
+        nickName: "校园用户",
+        avatar: "https://picsum.photos/seed/profile-default/120/120",
+        rating: 5
+      };
+      return {
+        ...base,
+        productCount: this.productCount,
+        taskCount: this.taskCount,
+        favoriteCount: this.favoriteCount
+      };
     }
   },
 
   onShow() {
     this.loadTrustScore();
+    this.loadCounts();
   },
 
   methods: {
@@ -164,6 +172,28 @@ export default {
         this.trustLevel = getTrustLevel(record.score);
       } catch (e) {
         // fallback
+      }
+    },
+
+    async loadCounts() {
+      if (!this.isLogin) { return; }
+      const userId = this.userStore.profile?.userId || "";
+      if (!userId) { return; }
+
+      const [productsRes, tasksRes, favoritesRes] = await Promise.all([
+        queryProductsByUser(userId, { page: 1, pageSize: 1 }).catch(() => null),
+        listMyTasks(userId).catch(() => null),
+        listFavorites().catch(() => null)
+      ]);
+
+      if (productsRes) {
+        this.productCount = productsRes.total || 0;
+      }
+      if (tasksRes) {
+        this.taskCount = (tasksRes.published?.length || 0) + (tasksRes.accepted?.length || 0);
+      }
+      if (favoritesRes) {
+        this.favoriteCount = favoritesRes.length || 0;
       }
     },
 
