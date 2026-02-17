@@ -290,49 +290,20 @@ export default {
     },
 
     handleQuickEntry(key) {
-      if (key === "products") {
-        this.goProducts();
-        return;
-      }
-      if (key === "publish") {
-        this.goPublish();
-        return;
-      }
-      if (key === "tasks") {
-        this.goTasks();
-        return;
-      }
-      if (key === "express") {
-        uni.navigateTo({
-          url: "/pages/tasks/express"
-        });
-        return;
-      }
-      if (key === "chat") {
-        this.goChat();
-        return;
-      }
-      if (key === "want") {
-        uni.navigateTo({ url: "/pages/want/list" });
-        return;
-      }
-      if (key === "feeds") {
-        uni.navigateTo({ url: "/pages/feeds/list" });
-        return;
-      }
-      if (key === "wiki") {
-        uni.navigateTo({ url: "/pages/wiki/index" });
-        return;
-      }
-      if (key === "activity") {
-        uni.navigateTo({ url: "/pages/activity/index" });
-        return;
-      }
-      if (key === "points") {
-        uni.navigateTo({ url: "/pages/points/index" });
-        return;
-      }
-      this.goProfile();
+      const routeMap = {
+        products: () => this.goProducts(),
+        publish: () => this.goPublish(),
+        tasks: () => this.goTasks(),
+        express: () => uni.navigateTo({ url: "/pages/tasks/express" }),
+        chat: () => this.goChat(),
+        want: () => uni.navigateTo({ url: "/pages/want/list" }),
+        feeds: () => uni.navigateTo({ url: "/pages/feeds/list" }),
+        wiki: () => uni.navigateTo({ url: "/pages/wiki/index" }),
+        activity: () => uni.navigateTo({ url: "/pages/activity/index" }),
+        points: () => uni.navigateTo({ url: "/pages/points/index" }),
+        profile: () => this.goProfile()
+      };
+      (routeMap[key] || routeMap.profile)();
     },
 
     goProductDetail(id) {

@@ -35,5 +35,12 @@ function copyStaticAssetsPlugin() {
 }
 
 export default defineConfig({
-  plugins: [uni(), copyStaticAssetsPlugin()]
+  plugins: [uni(), copyStaticAssetsPlugin()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        silenceDeprecations: ["import", "legacy-js-api"]
+      }
+    }
+  }
 });

@@ -1,4 +1,4 @@
-import { mockProducts } from "@/utils/mock-products";
+﻿import { mockProducts } from "@/utils/mock-products";
 import { getCloudDatabase, isCloudReady } from "@/utils/cloud";
 import { generateId as generateUniqueId, getCurrentUserId, createRateLimiter } from "@/utils/common";
 import { sanitizeText, sanitizeNumber } from "@/utils/sanitize";

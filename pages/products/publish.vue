@@ -621,15 +621,26 @@ export default {
 .publish-page {
   padding: 22rpx;
   padding-bottom: 180rpx;
+  background:
+    radial-gradient(circle at 10% 5%, rgba(47, 107, 255, 0.08), rgba(47, 107, 255, 0) 45%),
+    radial-gradient(circle at 90% 20%, rgba(19, 194, 163, 0.06), rgba(19, 194, 163, 0) 40%),
+    #f2f5fc;
 }
 
 .form {
-  padding: 24rpx;
+  padding: 28rpx;
+  border-radius: 26rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(228, 235, 251, 0.7);
+  box-shadow: 0 6rpx 24rpx rgba(31, 38, 66, 0.05);
 }
 
 .mode-row {
   display: flex;
   gap: 10rpx;
+  padding: 6rpx;
+  background: #eef2fb;
+  border-radius: 36rpx;
 }
 
 .mode-item {
@@ -638,39 +649,53 @@ export default {
   height: 64rpx;
   line-height: 64rpx;
   border-radius: 32rpx;
-  background: #eef2fb;
+  background: transparent;
   color: #65728b;
   font-size: 24rpx;
+  font-weight: 600;
+  transition: all 0.25s ease;
 }
 
 .mode-item.active {
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   color: #fff;
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.3);
 }
 
 .template-row {
-  margin-top: 14rpx;
+  margin-top: 18rpx;
   display: flex;
   flex-wrap: wrap;
   gap: 10rpx;
 }
 
 .template-chip {
-  padding: 8rpx 16rpx;
+  padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #eaf2ff;
+  background: linear-gradient(135deg, #eaf2ff, #f0f5ff);
   color: #315fb6;
   font-size: 22rpx;
+  font-weight: 500;
+  border: 1rpx solid rgba(47, 107, 255, 0.08);
+  transition: all 0.2s ease;
+}
+.template-chip:active {
+  background: linear-gradient(135deg, #dfe9ff, #e8f0ff);
+  transform: scale(0.96);
 }
 
 .field + .field {
-  margin-top: 24rpx;
+  margin-top: 28rpx;
 }
 
 .label {
-  color: #273245;
+  color: #1a2540;
   font-size: 26rpx;
-  margin-bottom: 10rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
 }
 
 .certified-row {
@@ -680,31 +705,40 @@ export default {
 }
 
 .label-inline {
-  color: #273245;
+  color: #1a2540;
   font-size: 26rpx;
+  font-weight: 600;
 }
 
 .input,
 .textarea,
 .picker {
-  background: #f3f5fb;
-  border-radius: 14rpx;
-  padding: 0 18rpx;
+  background: #f5f7fd;
+  border-radius: 16rpx;
+  padding: 0 20rpx;
   font-size: 26rpx;
   color: #2b3448;
+  border: 1rpx solid #edf1fa;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: rgba(47, 107, 255, 0.3);
+  box-shadow: 0 0 0 4rpx rgba(47, 107, 255, 0.06);
 }
 
 .input,
 .picker {
-  height: 74rpx;
-  line-height: 74rpx;
+  height: 80rpx;
+  line-height: 80rpx;
 }
 
 .textarea {
   width: auto;
-  min-height: 180rpx;
-  padding-top: 16rpx;
-  line-height: 1.6;
+  min-height: 200rpx;
+  padding-top: 18rpx;
+  line-height: 1.7;
 }
 
 .price-row {
@@ -728,41 +762,44 @@ export default {
 .map-pick-btn {
   margin: 0;
   min-width: 150rpx;
-  height: 74rpx;
-  line-height: 74rpx;
+  height: 80rpx;
+  line-height: 80rpx;
   border: none;
-  border-radius: 14rpx;
-  background: #eaf2ff;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #eaf2ff, #e2ecff);
   color: #2f6bff;
   font-size: 23rpx;
+  font-weight: 600;
 }
 
 .location-tip {
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   color: #6e7e98;
   font-size: 22rpx;
+  padding: 6rpx 14rpx;
+  background: #f5f8fd;
+  border-radius: 10rpx;
 }
 
 .drag-hint {
-  color: #6f7f99;
+  color: #8a95ac;
   font-size: 22rpx;
+  margin-top: 4rpx;
 }
 
 .drag-area {
   width: 100%;
-  margin-top: 10rpx;
+  margin-top: 12rpx;
 }
 
 .image-item {
   width: 146rpx;
   height: 146rpx;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   overflow: hidden;
-}
-
-.image-item {
   position: relative;
   background: #eef2fa;
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
   transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -780,29 +817,32 @@ export default {
 
 .remove {
   position: absolute;
-  top: 4rpx;
-  right: 4rpx;
-  width: 34rpx;
-  height: 34rpx;
-  line-height: 34rpx;
+  top: 6rpx;
+  right: 6rpx;
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
   text-align: center;
-  border-radius: 17rpx;
-  background: rgba(0, 0, 0, 0.55);
+  border-radius: 18rpx;
+  background: rgba(0, 0, 0, 0.5);
   color: #fff;
   font-size: 22rpx;
+  backdrop-filter: blur(4rpx);
 }
 
 .cover-badge {
   position: absolute;
   left: 6rpx;
   top: 6rpx;
-  height: 30rpx;
-  line-height: 30rpx;
-  padding: 0 10rpx;
-  border-radius: 15rpx;
-  background: rgba(47, 107, 255, 0.92);
+  height: 32rpx;
+  line-height: 32rpx;
+  padding: 0 12rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.92), rgba(36, 89, 214, 0.95));
   color: #fff;
   font-size: 18rpx;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(47, 107, 255, 0.3);
 }
 
 .image-tools {
@@ -810,31 +850,37 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 34rpx;
+  height: 36rpx;
   display: flex;
-  background: rgba(0, 0, 0, 0.45);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.2));
 }
 
 .tool {
   flex: 1;
   text-align: center;
-  line-height: 34rpx;
+  line-height: 36rpx;
   color: #fff;
   font-size: 18rpx;
 }
 
 .upload {
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   width: 100%;
-  height: 74rpx;
-  line-height: 74rpx;
-  border-radius: 14rpx;
-  background: #f3f5fb;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 16rpx;
+  background: #f5f7fd;
+  border: 2rpx dashed #d0d8ea;
   color: #7a869f;
   font-size: 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+}
+.upload:active {
+  background: #edf1fb;
+  border-color: #b8c6e4;
 }
 
 .actions {
@@ -842,9 +888,12 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 18rpx 20rpx 26rpx;
-  background: #fff;
-  border-top: 1rpx solid #e9edf4;
+  padding: 18rpx 24rpx calc(26rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(228, 235, 251, 0.6);
+  box-shadow: 0 -4rpx 20rpx rgba(31, 38, 66, 0.05);
   display: flex;
   gap: 12rpx;
 }
@@ -852,20 +901,23 @@ export default {
 .ai-btn,
 .submit-btn {
   flex: 1;
-  height: 86rpx;
-  line-height: 86rpx;
-  border-radius: 43rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
   border: none;
   font-size: 27rpx;
+  font-weight: 600;
 }
 
 .ai-btn {
-  background: #e9f9f5;
+  background: linear-gradient(135deg, #e9f9f5, #dff5ef);
   color: #139c82;
+  box-shadow: 0 4rpx 14rpx rgba(19, 156, 130, 0.12);
 }
 
 .submit-btn {
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #2459d6);
   color: #fff;
+  box-shadow: 0 6rpx 20rpx rgba(47, 107, 255, 0.3);
 }
 </style>

@@ -524,11 +524,15 @@ export default {
 /* --- 会话卡片 --- */
 .chat-item {
   margin-bottom: 12rpx;
-  padding: 20rpx;
+  padding: 22rpx;
   display: flex;
   gap: 16rpx;
+  border-radius: 22rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
+  box-shadow: 0 4rpx 14rpx rgba(31, 38, 66, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
 
 .avatar-wrap {
   position: relative;
@@ -536,21 +540,23 @@ export default {
 }
 
 .avatar {
-  width: 92rpx;
-  height: 92rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   border: 2rpx solid #eef2fb;
+  box-shadow: 0 2rpx 8rpx rgba(31, 38, 66, 0.06);
 }
 
 .online-dot {
   position: absolute;
   top: 2rpx;
   right: 2rpx;
-  width: 20rpx;
-  height: 20rpx;
+  width: 22rpx;
+  height: 22rpx;
   border-radius: 50%;
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   border: 3rpx solid #ffffff;
+  box-shadow: 0 2rpx 6rpx rgba(47, 107, 255, 0.3);
 }
 
 .content {

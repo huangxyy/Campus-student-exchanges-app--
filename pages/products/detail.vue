@@ -251,11 +251,12 @@ export default {
 
 <style lang="scss" scoped>
 .detail-page {
-  padding-bottom: 152rpx;
+  padding-bottom: 160rpx;
   background:
-    radial-gradient(circle at 9% 3%, rgba(59, 124, 255, 0.12), rgba(59, 124, 255, 0)),
-    radial-gradient(circle at 94% 16%, rgba(42, 203, 167, 0.1), rgba(42, 203, 167, 0)),
-    #f5f7fc;
+    radial-gradient(circle at 9% 3%, rgba(59, 124, 255, 0.10), rgba(59, 124, 255, 0) 50%),
+    radial-gradient(circle at 94% 16%, rgba(42, 203, 167, 0.08), rgba(42, 203, 167, 0) 45%),
+    radial-gradient(circle at 50% 60%, rgba(124, 58, 237, 0.04), rgba(124, 58, 237, 0) 40%),
+    #f2f5fc;
 }
 
 .loading {
@@ -268,11 +269,13 @@ export default {
 .banner {
   width: calc(100% - 32rpx);
   margin: 16rpx;
-  height: 560rpx;
-  border-radius: 24rpx;
+  height: 580rpx;
+  border-radius: 28rpx;
   overflow: hidden;
-  border: 1rpx solid #e3eaf9;
-  box-shadow: 0 10rpx 24rpx rgba(26, 39, 68, 0.09);
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
+  box-shadow:
+    0 8rpx 20rpx rgba(26, 39, 68, 0.06),
+    0 20rpx 48rpx rgba(26, 39, 68, 0.08);
 }
 
 .banner-image {
@@ -282,7 +285,11 @@ export default {
 
 .main {
   margin: 16rpx;
-  padding: 24rpx;
+  padding: 28rpx;
+  border-radius: 26rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(228, 235, 251, 0.7);
+  box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
 .title-row {
@@ -293,89 +300,124 @@ export default {
 }
 
 .title {
-  color: #1f2430;
-  font-size: 33rpx;
-  font-weight: 600;
+  color: #1a2540;
+  font-size: 34rpx;
+  font-weight: 700;
   line-height: 1.45;
   flex: 1;
+  letter-spacing: 0.5rpx;
 }
 
 .meta-views {
-  color: #77849b;
+  color: #8a95ac;
   font-size: 22rpx;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
+  background: #f3f6fd;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
 }
 
 .price-row {
-  margin-top: 12rpx;
+  margin-top: 16rpx;
   display: flex;
   align-items: baseline;
   gap: 12rpx;
+  padding: 16rpx 20rpx;
+  background: linear-gradient(135deg, #fff5f6, #fff0f2);
+  border-radius: 18rpx;
+  border: 1rpx solid rgba(230, 73, 97, 0.08);
 }
 
 .price {
   color: #e64961;
-  font-size: 44rpx;
-  font-weight: 700;
+  font-size: 48rpx;
+  font-weight: 800;
+  letter-spacing: -1rpx;
 }
 
 .original {
-  color: #9aa2b2;
+  color: #b8b8c0;
   font-size: 24rpx;
   text-decoration: line-through;
 }
 
 .chips {
-  margin-top: 18rpx;
+  margin-top: 20rpx;
   display: flex;
   flex-wrap: wrap;
   gap: 10rpx;
 }
 
 .block-title {
-  margin-top: 20rpx;
-  font-size: 25rpx;
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  position: relative;
+  padding-left: 18rpx;
+}
+.block-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4rpx;
+  bottom: 4rpx;
+  width: 6rpx;
+  border-radius: 3rpx;
+  background: linear-gradient(180deg, #2f6bff, #13c2a3);
 }
 
 .desc {
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   color: #4f5c75;
-  line-height: 1.7;
+  line-height: 1.8;
   font-size: 26rpx;
+  padding: 16rpx 20rpx;
+  background: #f9fafd;
+  border-radius: 16rpx;
+  border: 1rpx solid #eef2fb;
 }
 
 .expand-link {
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   color: #2f6bff;
   font-size: 23rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
 }
 
 .tag-row {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx;
 }
 
 .seller {
-  margin: 0 16rpx;
-  padding: 20rpx;
+  margin: 14rpx 16rpx 0;
+  padding: 24rpx;
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 18rpx;
+  border-radius: 26rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(228, 235, 251, 0.7);
+  box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
 .avatar {
-  width: 84rpx;
-  height: 84rpx;
+  width: 90rpx;
+  height: 90rpx;
   border-radius: 50%;
-  border: 1rpx solid #e3eaf7;
+  border: 3rpx solid #eef2fb;
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.1);
 }
 
 .name {
-  color: #243045;
+  color: #1a2540;
   font-size: 30rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .name-row {
@@ -386,31 +428,32 @@ export default {
 }
 
 .badge {
-  height: 34rpx;
-  line-height: 34rpx;
-  padding: 0 12rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  padding: 0 14rpx;
   border-radius: 999rpx;
   font-size: 20rpx;
+  font-weight: 500;
 }
 
 .badge.cert {
-  background: #eaf4ff;
+  background: linear-gradient(135deg, #eaf4ff, #e0edff);
   color: #2f6bff;
 }
 
 .badge.college {
-  background: #eef5ec;
+  background: linear-gradient(135deg, #eef8ec, #e4f5e1);
   color: #2f8a49;
 }
 
 .meta {
-  margin-top: 6rpx;
+  margin-top: 8rpx;
   color: #7e889b;
   font-size: 24rpx;
 }
 
 .seller-tags {
-  margin-top: 10rpx;
+  margin-top: 12rpx;
 }
 
 .actions {
@@ -420,9 +463,12 @@ export default {
   bottom: 0;
   display: flex;
   gap: 14rpx;
-  padding: 18rpx 20rpx 24rpx;
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1rpx solid #e9edf5;
+  padding: 18rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(228, 235, 251, 0.6);
+  box-shadow: 0 -4rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
 .ui-btn {
@@ -430,7 +476,7 @@ export default {
 }
 
 .active-btn {
-  background: #dfe9ff;
+  background: linear-gradient(135deg, #dfe9ff, #e8f0ff);
   color: #214aad;
 }
 </style>

@@ -472,17 +472,19 @@ export default {
   padding: 20rpx;
   padding-bottom: 140rpx;
   background:
-    radial-gradient(circle at 10% 5%, rgba(53, 121, 255, 0.12), rgba(53, 121, 255, 0)),
-    radial-gradient(circle at 92% 18%, rgba(67, 210, 169, 0.11), rgba(67, 210, 169, 0)),
-    #f5f7fc;
+    radial-gradient(circle at 10% 5%, rgba(53, 121, 255, 0.10), rgba(53, 121, 255, 0) 50%),
+    radial-gradient(circle at 92% 18%, rgba(67, 210, 169, 0.08), rgba(67, 210, 169, 0) 45%),
+    #f2f5fc;
 }
 
 .market-hero {
-  padding: 24rpx;
+  padding: 26rpx;
   background:
     linear-gradient(140deg, rgba(231, 239, 255, 0.96), rgba(245, 249, 255, 0.98)),
     #ffffff;
-  border: 1rpx solid #dfebff;
+  border: 1rpx solid rgba(220, 235, 255, 0.7);
+  border-radius: 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
 .hero-title {
@@ -518,8 +520,11 @@ export default {
 
 .toolbar {
   margin-top: 14rpx;
-  padding: 20rpx;
-  border: 1rpx solid #e4e9f6;
+  padding: 22rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.7);
+  border-radius: 22rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(31, 38, 66, 0.04);
 }
 
 .search-row {
@@ -529,24 +534,31 @@ export default {
 
 .search-input {
   flex: 1;
-  height: 72rpx;
-  border-radius: 16rpx;
-  background: #f7f9ff;
-  border: 1rpx solid #e3e9f9;
-  padding: 0 20rpx;
+  height: 76rpx;
+  border-radius: 38rpx;
+  background: #f5f7fd;
+  border: 1rpx solid #edf1fa;
+  padding: 0 24rpx;
   font-size: 26rpx;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.search-input:focus {
+  border-color: rgba(47, 107, 255, 0.25);
+  box-shadow: 0 0 0 4rpx rgba(47, 107, 255, 0.06);
 }
 
 .search-btn {
   margin: 0;
   width: 130rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  border-radius: 16rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 38rpx;
   border: none;
   background: linear-gradient(135deg, #2f6bff, #2760de);
   color: #fff;
   font-size: 24rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.25);
 }
 
 .category-scroll {
@@ -728,19 +740,23 @@ export default {
 
 .float-btn {
   position: fixed;
-  right: 22rpx;
-  bottom: 110rpx;
-  min-width: 150rpx;
-  height: 90rpx;
-  border-radius: 45rpx;
-  padding: 0 24rpx;
+  right: 28rpx;
+  bottom: 120rpx;
+  min-width: 160rpx;
+  height: 92rpx;
+  border-radius: 46rpx;
+  padding: 0 28rpx;
   background: linear-gradient(135deg, #2f6bff, #1f53ce);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 25rpx;
-  font-weight: 600;
-  box-shadow: 0 16rpx 28rpx rgba(47, 107, 255, 0.34);
+  font-size: 26rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  box-shadow:
+    0 8rpx 20rpx rgba(47, 107, 255, 0.3),
+    0 20rpx 40rpx rgba(47, 107, 255, 0.15);
+  z-index: 99;
 }
 </style>

@@ -554,14 +554,16 @@ export default {
 
 /* --- 对话头部 --- */
 .conversation-head {
-  padding: 18rpx 22rpx;
+  padding: 20rpx 24rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background:
-    linear-gradient(140deg, rgba(237, 242, 255, 0.96), rgba(248, 250, 255, 0.98)),
-    #ffffff;
-  border: 1rpx solid #e4ebfb;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(31, 38, 66, 0.04);
 }
 
 .head-left {
@@ -795,23 +797,27 @@ export default {
 .send-box {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  padding: 12rpx 4rpx 20rpx;
-  border-top: 1rpx solid #e9eef8;
-  background: rgba(242, 245, 251, 0.5);
+  gap: 10rpx;
+  padding: 14rpx 8rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(228, 235, 251, 0.5);
+  box-shadow: 0 -2rpx 12rpx rgba(31, 38, 66, 0.03);
 }
 
 .pick-image-btn {
   margin: 0;
-  width: 76rpx;
-  height: 76rpx;
-  line-height: 76rpx;
+  width: 72rpx;
+  height: 72rpx;
+  line-height: 72rpx;
   border: none;
-  border-radius: 38rpx;
-  background: #e6edff;
+  border-radius: 36rpx;
+  background: linear-gradient(135deg, #e6edff, #dde6ff);
   color: #315fca;
-  font-size: 32rpx;
+  font-size: 30rpx;
   padding: 0;
+  box-shadow: 0 2rpx 8rpx rgba(47, 107, 255, 0.1);
 }
 
 .pick-image-btn::after {
@@ -820,15 +826,17 @@ export default {
 
 .pick-card-btn {
   margin: 0;
-  width: 76rpx;
-  height: 76rpx;
-  line-height: 76rpx;
+  width: 72rpx;
+  height: 72rpx;
+  line-height: 72rpx;
   border: none;
-  border-radius: 38rpx;
-  background: #eef2ff;
+  border-radius: 36rpx;
+  background: linear-gradient(135deg, #eef2ff, #e6edff);
   color: #395fc6;
-  font-size: 24rpx;
+  font-size: 23rpx;
+  font-weight: 600;
   padding: 0;
+  box-shadow: 0 2rpx 8rpx rgba(47, 107, 255, 0.08);
 }
 
 .pick-card-btn::after {
@@ -837,39 +845,45 @@ export default {
 
 .input-wrap {
   flex: 1;
-  height: 76rpx;
-  border-radius: 38rpx;
+  height: 78rpx;
+  border-radius: 39rpx;
   background: #ffffff;
-  border: 1rpx solid #e3eaf6;
+  border: 1rpx solid rgba(228, 235, 251, 0.8);
   display: flex;
   align-items: center;
-  padding: 0 22rpx;
+  padding: 0 24rpx;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-wrap:focus-within {
+  border-color: rgba(47, 107, 255, 0.25);
+  box-shadow: 0 0 0 4rpx rgba(47, 107, 255, 0.06);
 }
 
 .input {
   flex: 1;
-  height: 76rpx;
+  height: 78rpx;
   font-size: 26rpx;
   background: transparent;
 }
 
 .send-btn {
   margin: 0;
-  width: 124rpx;
-  height: 76rpx;
-  line-height: 76rpx;
+  width: 120rpx;
+  height: 78rpx;
+  line-height: 78rpx;
   border: none;
-  border-radius: 38rpx;
-  background: #c8d3e8;
+  border-radius: 39rpx;
+  background: #d0d8ea;
   color: #fff;
   font-size: 26rpx;
   font-weight: 600;
-  transition: background 0.2s;
+  transition: all 0.25s ease;
 }
 
 .send-btn.active {
   background: linear-gradient(135deg, #2f6bff, #2459d6);
-  box-shadow: 0 6rpx 16rpx rgba(47, 107, 255, 0.25);
+  box-shadow: 0 6rpx 18rpx rgba(47, 107, 255, 0.3);
+  transform: scale(1.02);
 }
 
 .send-btn::after {

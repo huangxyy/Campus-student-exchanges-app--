@@ -494,11 +494,13 @@ export default {
 }
 
 .banner {
-  padding: 24rpx;
+  padding: 26rpx;
   background:
-    linear-gradient(145deg, rgba(234, 247, 252, 0.96), rgba(245, 252, 255, 0.98)),
+    linear-gradient(145deg, rgba(234, 244, 255, 0.96), rgba(242, 250, 255, 0.98)),
     #ffffff;
-  border: 1rpx solid #dfeef8;
+  border: 1rpx solid rgba(220, 235, 248, 0.7);
+  border-radius: 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
 .title-row {
@@ -673,70 +675,78 @@ export default {
 }
 
 .task-card {
-  margin-bottom: 14rpx;
-  padding: 20rpx;
-  border: 1rpx solid #e5ebf8;
+  margin-bottom: 16rpx;
+  padding: 22rpx 22rpx 22rpx 28rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.7);
   position: relative;
+  border-radius: 22rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(31, 38, 66, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .task-card::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 14rpx;
-  bottom: 14rpx;
-  width: 8rpx;
-  border-radius: 0 8rpx 8rpx 0;
-  background: #b8c6e4;
+  top: 16rpx;
+  bottom: 16rpx;
+  width: 6rpx;
+  border-radius: 0 6rpx 6rpx 0;
+  background: #c0cce4;
+  transition: background 0.3s ease;
 }
 
 .task-card.status-open::before {
-  background: #2f6bff;
+  background: linear-gradient(180deg, #2f6bff, #5b8af5);
 }
 
 .task-card.status-assigned::before {
-  background: #e39a2f;
+  background: linear-gradient(180deg, #f5a623, #e39a2f);
 }
 
 .task-card.status-completed::before {
-  background: #2ea269;
+  background: linear-gradient(180deg, #2ea269, #24b987);
 }
 
 .task-card.status-cancelled::before {
-  background: #9ba6bc;
+  background: #c0cce4;
 }
 
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: 10rpx;
+  padding-left: 6rpx;
 }
 
 .task-title {
-  color: #1f2430;
+  color: #1a2540;
   font-size: 29rpx;
-  font-weight: 600;
+  font-weight: 700;
+  flex: 1;
 }
 
 .reward {
   color: #e94b64;
   font-size: 24rpx;
   font-weight: 700;
-  background: #ffeef1;
+  background: linear-gradient(135deg, #fff0f2, #ffeef1);
   border-radius: 999rpx;
-  padding: 8rpx 14rpx;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid rgba(233, 75, 100, 0.08);
+  flex-shrink: 0;
 }
 
 .meta {
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   color: #738099;
-  font-size: 24rpx;
+  font-size: 23rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10rpx;
-  padding-left: 10rpx;
+  padding-left: 6rpx;
 }
 
 .sub-meta {
@@ -744,12 +754,15 @@ export default {
   display: flex;
   align-items: center;
   gap: 10rpx;
-  padding-left: 10rpx;
+  padding-left: 6rpx;
 }
 
 .countdown {
   color: #4f6285;
   font-size: 22rpx;
+  background: #f3f6fd;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
 }
 
 .distance {
@@ -760,9 +773,11 @@ export default {
 .urgent {
   border-radius: 999rpx;
   padding: 4rpx 14rpx;
-  background: #ffe9ec;
+  background: linear-gradient(135deg, #ffe9ec, #ffecee);
   color: #e34d63;
   font-size: 20rpx;
+  font-weight: 600;
+  animation: anim-pulse 2s ease-in-out infinite;
 }
 
 .status-chip {
@@ -770,20 +785,21 @@ export default {
   border-radius: 999rpx;
   padding: 6rpx 16rpx;
   font-size: 20rpx;
+  font-weight: 500;
 }
 
 .status-chip.open {
-  background: #eaf2ff;
+  background: linear-gradient(135deg, #eaf2ff, #e4edff);
   color: #2f6bff;
 }
 
 .status-chip.assigned {
-  background: #fff4df;
+  background: linear-gradient(135deg, #fff4df, #fff1d6);
   color: #bd7b16;
 }
 
 .status-chip.completed {
-  background: #e8f7ef;
+  background: linear-gradient(135deg, #e8f7ef, #e2f5ea);
   color: #238a57;
 }
 
@@ -793,36 +809,45 @@ export default {
 }
 
 .foot {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #f0f3f9;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: 10rpx;
+  padding-left: 6rpx;
 }
 
 .publisher {
   color: #7b879d;
   font-size: 23rpx;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .take-btn {
   margin: 0;
-  min-width: 130rpx;
-  height: 54rpx;
-  line-height: 54rpx;
+  min-width: 140rpx;
+  height: 58rpx;
+  line-height: 58rpx;
   border: none;
   border-radius: 32rpx;
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #2459d6);
   color: #fff;
   font-size: 22rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.25);
 }
 
 .taken-tag {
-  min-width: 130rpx;
-  height: 54rpx;
-  line-height: 54rpx;
+  min-width: 140rpx;
+  height: 58rpx;
+  line-height: 58rpx;
   text-align: center;
-  border-radius: 30rpx;
+  border-radius: 32rpx;
   background: #eef2fa;
   color: #68738b;
   font-size: 22rpx;

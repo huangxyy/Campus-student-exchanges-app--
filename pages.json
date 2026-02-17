@@ -225,10 +225,10 @@
     }
   ],
   "tabBar": {
-    "color": "#7f8797",
+    "color": "#8a95ac",
     "selectedColor": "#2f6bff",
     "backgroundColor": "#ffffff",
-    "borderStyle": "black",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
@@ -258,8 +258,8 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f6f7fb",
+    "navigationBarBackgroundColor": "#f8faff",
+    "backgroundColor": "#f2f5fc",
     "animationType": "slide-in-right",
     "animationDuration": 280
   }

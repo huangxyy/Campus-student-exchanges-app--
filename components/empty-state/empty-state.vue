@@ -40,32 +40,37 @@ export default {
 
 <style lang="scss" scoped>
 .empty-state {
-  margin: 80rpx auto;
+  margin: 60rpx auto;
   text-align: center;
-  padding: 20rpx;
+  padding: 40rpx 30rpx;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16rpx);
+  -webkit-backdrop-filter: blur(16rpx);
+  border-radius: 28rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
 
   .illust {
     position: relative;
-    width: 200rpx;
-    height: 200rpx;
-    margin: 0 auto 20rpx;
+    width: 220rpx;
+    height: 220rpx;
+    margin: 0 auto 24rpx;
   }
 
   .illust-circle {
     position: absolute;
     top: 0; right: 0; bottom: 0; left: 0;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(47, 107, 255, 0.08), rgba(47, 107, 255, 0.02));
-    border: 2rpx dashed rgba(47, 107, 255, 0.15);
+    background: radial-gradient(circle, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0.01));
+    border: 2rpx dashed rgba(47, 107, 255, 0.12);
   }
 
   .illust-circle-sm {
     position: absolute;
-    width: 60rpx; height: 60rpx;
-    right: -10rpx; top: 10rpx;
+    width: 64rpx; height: 64rpx;
+    right: -12rpx; top: 8rpx;
     border-radius: 50%;
-    background: rgba(19, 194, 163, 0.1);
-    border: 1rpx solid rgba(19, 194, 163, 0.15);
+    background: linear-gradient(135deg, rgba(19, 194, 163, 0.1), rgba(19, 194, 163, 0.05));
+    border: 1rpx solid rgba(19, 194, 163, 0.12);
   }
 
   .illust-icon {
@@ -74,7 +79,8 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 72rpx;
+    font-size: 78rpx;
+    filter: drop-shadow(0 4rpx 8rpx rgba(47, 107, 255, 0.08));
   }
 
   .illust-dot {
@@ -82,47 +88,52 @@ export default {
     border-radius: 50%;
   }
   .dot-1 {
-    width: 12rpx; height: 12rpx;
-    left: -6rpx; top: 60rpx;
-    background: rgba(47, 107, 255, 0.25);
+    width: 14rpx; height: 14rpx;
+    left: -8rpx; top: 60rpx;
+    background: rgba(47, 107, 255, 0.2);
   }
   .dot-2 {
-    width: 8rpx; height: 8rpx;
-    right: -4rpx; bottom: 40rpx;
-    background: rgba(124, 58, 237, 0.3);
+    width: 10rpx; height: 10rpx;
+    right: -6rpx; bottom: 40rpx;
+    background: rgba(124, 58, 237, 0.25);
   }
   .dot-3 {
-    width: 10rpx; height: 10rpx;
-    left: 30rpx; bottom: 10rpx;
-    background: rgba(19, 194, 163, 0.25);
+    width: 12rpx; height: 12rpx;
+    left: 28rpx; bottom: 8rpx;
+    background: rgba(19, 194, 163, 0.2);
   }
 
   .title {
-    margin-top: 8rpx;
-    font-size: 30rpx;
+    margin-top: 10rpx;
+    font-size: 32rpx;
     color: #1a2540;
-    font-weight: 700;
+    font-weight: 800;
+    letter-spacing: 0.5rpx;
   }
 
   .desc {
-    margin-top: 10rpx;
+    margin-top: 12rpx;
     color: #8a95ac;
-    font-size: 24rpx;
-    line-height: 1.6;
+    font-size: 25rpx;
+    line-height: 1.7;
+    max-width: 480rpx;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .action {
-    margin-top: 28rpx;
-    width: 280rpx;
-    height: 76rpx;
-    line-height: 76rpx;
+    margin-top: 32rpx;
+    width: 300rpx;
+    height: 80rpx;
+    line-height: 80rpx;
     background: linear-gradient(135deg, #2f6bff, #5b8af5);
     color: #fff;
     border: none;
-    border-radius: 38rpx;
-    font-size: 26rpx;
+    border-radius: 40rpx;
+    font-size: 27rpx;
     font-weight: 600;
-    box-shadow: 0 8rpx 24rpx rgba(47, 107, 255, 0.25);
+    box-shadow: 0 8rpx 28rpx rgba(47, 107, 255, 0.28);
+    letter-spacing: 1rpx;
   }
   .action::after { border: none; }
 }

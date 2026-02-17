@@ -37,14 +37,16 @@ page {
   background: $app-bg;
   color: $text-primary;
   font-size: 28rpx;
-  --ui-bg: #f5f7fc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  --ui-bg: #f2f5fc;
   --ui-surface: #ffffff;
   --ui-primary: #2f6bff;
   --ui-primary-strong: #2459d6;
   --ui-success: #24b987;
   --ui-warning: #f39b34;
   --ui-danger: #e25269;
-  --ui-text-main: #1f2430;
+  --ui-text-main: #1a2540;
   --ui-text-soft: #65728a;
   --ui-line: #e5ebf8;
 }
@@ -90,10 +92,11 @@ page {
 .ui-btn-primary {
   background: linear-gradient(135deg, $primary-color, $primary-strong);
   color: #fff;
+  box-shadow: 0 6rpx 20rpx rgba(47, 107, 255, 0.28);
 }
 
 .ui-btn-secondary {
-  background: #e7efff;
+  background: linear-gradient(135deg, #e7efff, #dfe9ff);
   color: #325ec0;
 }
 
@@ -103,7 +106,7 @@ page {
 }
 
 .ui-btn-danger {
-  background: #fceff1;
+  background: linear-gradient(135deg, #fceff1, #ffe8ec);
   color: $danger-color;
 }
 

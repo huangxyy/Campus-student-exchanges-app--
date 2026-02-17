@@ -182,59 +182,37 @@ export default {
       (actions[item.key] || (() => {}))();
     },
 
-    goPage(url) {
+    /** 登录守卫：未登录时跳转登录页，已登录则执行回调 */
+    requireLogin(callback) {
       if (!this.isLogin) {
         this.goLogin();
         return;
       }
-      uni.navigateTo({ url });
+      callback();
+    },
+
+    goPage(url) {
+      this.requireLogin(() => uni.navigateTo({ url }));
     },
 
     goLogin() {
-      uni.navigateTo({
-        url: "/pages/login/login"
-      });
+      uni.navigateTo({ url: "/pages/login/login" });
     },
 
     goMyProducts() {
-      if (!this.isLogin) {
-        this.goLogin();
-        return;
-      }
-
-      uni.navigateTo({
-        url: "/pages/profile/my-products"
-      });
+      this.requireLogin(() => uni.navigateTo({ url: "/pages/profile/my-products" }));
     },
 
     goPublishTask() {
-      if (!this.isLogin) {
-        this.goLogin();
-        return;
-      }
-      uni.navigateTo({
-        url: "/pages/tasks/publish"
-      });
+      this.requireLogin(() => uni.navigateTo({ url: "/pages/tasks/publish" }));
     },
 
     goMyTasks() {
-      if (!this.isLogin) {
-        this.goLogin();
-        return;
-      }
-      uni.navigateTo({
-        url: "/pages/tasks/my"
-      });
+      this.requireLogin(() => uni.navigateTo({ url: "/pages/tasks/my" }));
     },
 
     goFavorites() {
-      if (!this.isLogin) {
-        this.goLogin();
-        return;
-      }
-      uni.navigateTo({
-        url: "/pages/profile/favorites"
-      });
+      this.requireLogin(() => uni.navigateTo({ url: "/pages/profile/favorites" }));
     },
 
     logout() {
@@ -324,15 +302,24 @@ export default {
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 28rpx;
+  padding: 30rpx;
 }
 
 .hero-bg {
   position: absolute;
-  top: -50rpx; right: -30rpx;
-  width: 220rpx; height: 220rpx;
+  top: -60rpx; right: -40rpx;
+  width: 260rpx; height: 260rpx;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(47, 107, 255, 0.1), transparent);
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.12), transparent);
+  pointer-events: none;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  bottom: -30rpx; left: -20rpx;
+  width: 160rpx; height: 160rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(19, 194, 163, 0.08), transparent);
   pointer-events: none;
 }
 
@@ -594,16 +581,18 @@ export default {
 /* --- 退出登录 --- */
 .logout-btn {
   margin-top: 30rpx;
-  height: 86rpx;
-  line-height: 86rpx;
-  border-radius: 43rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
   border: none;
-  background: rgba(252, 239, 241, 0.85);
+  background: linear-gradient(135deg, rgba(252, 239, 241, 0.9), rgba(255, 232, 236, 0.85));
   color: $danger-color;
   font-size: 28rpx;
   font-weight: 600;
-  backdrop-filter: blur(10rpx);
-  -webkit-backdrop-filter: blur(10rpx);
+  backdrop-filter: blur(12rpx);
+  -webkit-backdrop-filter: blur(12rpx);
+  border: 1rpx solid rgba(226, 82, 105, 0.08);
+  box-shadow: 0 4rpx 14rpx rgba(226, 82, 105, 0.06);
 }
 .logout-btn::after { border: none; }
 
