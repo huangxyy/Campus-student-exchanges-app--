@@ -191,6 +191,7 @@ export default {
       const { silent = false } = options;
       if (!this.isLogin) {
         this.list = [];
+        this.updateTabBarBadge(0);
         return;
       }
 
@@ -203,6 +204,7 @@ export default {
         const latest = await listConversations().catch(() => []);
         if (!silent) {
           this.list = latest;
+          this.updateTabBarBadge(this.totalUnread);
           return;
         }
 
@@ -214,8 +216,21 @@ export default {
         if (hasChanged) {
           this.list = latest;
         }
+        this.updateTabBarBadge(latestUnread);
       } finally {
         this.syncing = false;
+      }
+    },
+
+    updateTabBarBadge(count) {
+      try {
+        if (count > 0) {
+          uni.setTabBarBadge({ index: 2, text: count > 99 ? "99+" : String(count) });
+        } else {
+          uni.removeTabBarBadge({ index: 2 });
+        }
+      } catch (e) {
+        // ignore
       }
     },
 
@@ -236,6 +251,8 @@ export default {
           this.syncMode = "watch";
           this.watchRetryCount = 0;
           this.stopListAutoRefresh();
+          const unread = list.reduce((sum, item) => sum + (item.unread || 0), 0);
+          this.updateTabBarBadge(unread);
         },
         onError: () => {
           this.stopListRealtimeSync();
@@ -280,7 +297,9 @@ export default {
         return;
       }
 
-      const retryMs = Math.min(30000, 5000 + this.watchRetryCount * 5000);
+      const baseRetryMs = Math.min(30000, 5000 + this.watchRetryCount * 4000);
+      const jitterMs = Math.floor(Math.random() * 2000);
+      const retryMs = baseRetryMs + jitterMs;
       this.watchRetryTimer = setTimeout(() => {
         this.watchRetryTimer = null;
         this.watchRetryCount += 1;
@@ -301,6 +320,9 @@ export default {
       }
 
       this.listPollingTimer = setInterval(() => {
+        if (this.syncMode !== "polling") {
+          return;
+        }
         this.loadConversations({ silent: true });
       }, 4000);
     },

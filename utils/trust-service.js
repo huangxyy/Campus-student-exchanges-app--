@@ -193,28 +193,3 @@ export async function recordReport() {
     reportCount: current.reportCount + 1
   });
 }
-
-/**
- * Record a report penalty against a specific user (not the current user).
- * Used when someone reports another user's content.
- */
-export async function recordReportAgainst(targetUserId) {
-  if (!targetUserId) { return; }
-  const current = await getTrustScore(targetUserId);
-  const updated = {
-    ...current,
-    userId: targetUserId,
-    reportCount: current.reportCount + 1
-  };
-  updated.score = computeScore(updated);
-  updated.updatedAt = Date.now();
-
-  const cloudRecord = await upsertScoreInCloud(targetUserId, updated).catch(() => null);
-  if (cloudRecord) {
-    saveLocalScore(targetUserId, cloudRecord);
-    return cloudRecord;
-  }
-
-  saveLocalScore(targetUserId, updated);
-  return normalizeTrustRecord(updated);
-}

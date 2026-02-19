@@ -273,7 +273,9 @@ export default {
         return;
       }
 
-      const retryMs = Math.min(30000, 5000 + this.watchRetryCount * 5000);
+      const baseRetryMs = Math.min(30000, 5000 + this.watchRetryCount * 4000);
+      const jitterMs = Math.floor(Math.random() * 2000);
+      const retryMs = baseRetryMs + jitterMs;
       this.watchRetryTimer = setTimeout(() => {
         this.watchRetryTimer = null;
         this.watchRetryCount += 1;
@@ -301,6 +303,9 @@ export default {
     startNewTaskPolling() {
       this.stopNewTaskPolling();
       this.checkTimer = setInterval(() => {
+        if (this.syncMode !== "polling") {
+          return;
+        }
         this.checkNewTasks();
       }, 8000);
     },
@@ -315,6 +320,10 @@ export default {
     },
 
     async checkNewTasks() {
+      if (this.syncMode !== "polling") {
+        return;
+      }
+
       if (this.checkingNewTasks) {
         return;
       }
@@ -439,7 +448,7 @@ export default {
       });
     },
 
-    async handleTakeTask(task) {
+    handleTakeTask(task) {
       if (!this.isLogin) {
         uni.navigateTo({
           url: "/pages/login/login"
@@ -464,20 +473,31 @@ export default {
         return;
       }
 
-      const ok = await takeTask(task.id, profile.nickName || "校园用户", profile.userId);
-      if (!ok) {
-        uni.showToast({
-          title: "接单失败，请刷新后重试",
-          icon: "none"
-        });
-        return;
-      }
+      uni.showModal({
+        title: "确认接单",
+        content: `确认接取任务「${task.title}」？\n赏金 ¥${task.reward}，地点：${task.location || '待定'}`,
+        confirmText: "确认接单",
+        success: async (res) => {
+          if (!res.confirm) {
+            return;
+          }
 
-      uni.showToast({
-        title: `已接单：${task.title}`,
-        icon: "success"
+          const ok = await takeTask(task.id, profile.nickName || "校园用户", profile.userId);
+          if (!ok) {
+            uni.showToast({
+              title: "接单失败，请刷新后重试",
+              icon: "none"
+            });
+            return;
+          }
+
+          uni.showToast({
+            title: `已接单：${task.title}`,
+            icon: "success"
+          });
+          this.loadTasks();
+        }
       });
-      this.loadTasks();
     }
   }
 };

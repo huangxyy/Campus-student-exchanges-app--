@@ -17,6 +17,16 @@
         <text v-else class="setting-value">未设置</text>
         <text class="arrow">›</text>
       </view>
+      <view class="setting-item" @tap="editStudentId">
+        <text class="setting-label">学号</text>
+        <text class="setting-value">{{ profile.studentId || '未绑定' }}</text>
+        <text class="arrow">›</text>
+      </view>
+      <view class="setting-item" @tap="editPhone">
+        <text class="setting-label">联系方式</text>
+        <text class="setting-value">{{ profile.phone || '未填写' }}</text>
+        <text class="arrow">›</text>
+      </view>
     </view>
 
     <view class="section card anim-slide-up anim-d2">
@@ -123,14 +133,57 @@ export default {
       });
     },
 
+    editStudentId() {
+      uni.showModal({
+        title: "绑定学号",
+        editable: true,
+        placeholderText: this.profile.studentId || "输入你的学号",
+        success: (res) => {
+          if (res.confirm && res.content) {
+            const studentId = res.content.trim();
+            if (!/^[A-Za-z0-9]{4,20}$/.test(studentId)) {
+              uni.showToast({ title: "学号格式不正确（4-20位字母数字）", icon: "none" });
+              return;
+            }
+            this.userStore.updateProfile({ studentId });
+            uni.showToast({ title: "学号已绑定", icon: "success" });
+          }
+        }
+      });
+    },
+
+    editPhone() {
+      uni.showModal({
+        title: "填写联系方式",
+        editable: true,
+        placeholderText: this.profile.phone || "手机号或微信号",
+        success: (res) => {
+          if (res.confirm && res.content) {
+            const phone = res.content.trim();
+            if (phone.length < 3 || phone.length > 30) {
+              uni.showToast({ title: "联系方式长度不正确", icon: "none" });
+              return;
+            }
+            this.userStore.updateProfile({ phone });
+            uni.showToast({ title: "联系方式已更新", icon: "success" });
+          }
+        }
+      });
+    },
+
     clearCache() {
       uni.showModal({
         title: "清除缓存",
-        content: "清除后需重新加载数据，是否继续？",
+        content: "清除商品、任务、聊天等缓存数据，登录信息将保留。是否继续？",
         success: (res) => {
           if (!res.confirm) { return; }
           try {
+            // 保留登录信息，只清除业务缓存
+            const authUser = uni.getStorageSync("cm_user");
+            const authToken = uni.getStorageSync("cm_token");
             uni.clearStorageSync();
+            if (authUser) { uni.setStorageSync("cm_user", authUser); }
+            if (authToken) { uni.setStorageSync("cm_token", authToken); }
           } catch (error) {
             // ignore
           }

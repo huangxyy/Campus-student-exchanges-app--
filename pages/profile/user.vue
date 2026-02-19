@@ -12,6 +12,11 @@
             <view class="hero-id">ID: {{ userId.slice(-8) }}</view>
           </view>
         </view>
+        <view v-if="trustScore > 0" class="trust-row">
+          <text class="trust-icon">{{ trustLevel.icon || '⭐' }}</text>
+          <text class="trust-text" :style="{ color: trustLevel.color }">{{ trustLevel.level }} {{ trustScore }}分</text>
+          <text v-if="taskStats && taskStats.helperTag" class="helper-tag">{{ taskStats.helperTag }}</text>
+        </view>
         <view class="stats-row">
           <view class="stat-block">
             <view class="stat-num">{{ stats.productCount || 0 }}</view>
@@ -19,7 +24,7 @@
           </view>
           <view class="stat-block">
             <view class="stat-num">{{ stats.orderCount || 0 }}</view>
-            <view class="stat-label">交易</view>
+            <view class="stat-label">完成</view>
           </view>
           <view class="stat-block">
             <view class="stat-num">{{ stats.taskCount || 0 }}</view>
@@ -49,6 +54,7 @@
 
       <view class="actions anim-slide-up anim-d3" v-if="!isSelf">
         <button class="chat-btn btn-bounce" @tap="goChat">发消息</button>
+        <button class="report-btn btn-bounce" @tap="reportUser">举报用户</button>
       </view>
     </template>
   </view>
@@ -58,6 +64,10 @@
 import { useUserStore } from "@/store/user";
 import { createOrGetConversationByProduct } from "@/utils/chat-service";
 import { getCloudDatabase } from "@/utils/cloud";
+import { queryProductsByUser } from "@/utils/product-service";
+import { listMyTasks, getTaskUserStats } from "@/utils/task-service";
+import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
+import { submitReport, REPORT_REASONS } from "@/utils/report-service";
 
 export default {
   data() {
@@ -67,7 +77,10 @@ export default {
       stats: {},
       products: [],
       feeds: [],
-      loading: false
+      loading: false,
+      trustScore: 0,
+      trustLevel: { level: "", color: "#8a93a7", icon: "" },
+      taskStats: null
     };
   },
 
@@ -87,6 +100,7 @@ export default {
       if (!this.userId) { return; }
       this.loading = true;
       try {
+        // 尝试云端加载用户信息
         const db = getCloudDatabase();
         if (db) {
           const userRes = await db.collection("users").where({ userId: this.userId }).limit(1).get().catch(() => null);
@@ -94,21 +108,42 @@ export default {
             this.userInfo = userRes.data[0];
           }
 
-          const productRes = await db.collection("products").where({ userId: this.userId, status: "active" }).orderBy("createdAt", "desc").limit(5).get().catch(() => null);
-          this.products = (productRes && productRes.data) || [];
-
           const feedRes = await db.collection("feeds").where({ authorId: this.userId, status: "active" }).orderBy("createdAt", "desc").limit(5).get().catch(() => null);
           this.feeds = (feedRes && feedRes.data) || [];
+        }
 
-          const orderRes = await db.collection("orders").where({ buyerId: this.userId }).limit(100).get().catch(() => null);
-          const taskRes = await db.collection("tasks").where({ publisherId: this.userId }).limit(100).get().catch(() => null);
+        // 使用标准 service 加载商品和任务（自动支持本地回退）
+        const [productRes, taskStats] = await Promise.all([
+          queryProductsByUser(this.userId, { page: 1, pageSize: 5 }).catch(() => ({ list: [], total: 0 })),
+          getTaskUserStats(this.userId).catch(() => null)
+        ]);
 
-          this.stats = {
-            productCount: this.products.length,
-            orderCount: (orderRes && orderRes.data && orderRes.data.length) || 0,
-            taskCount: (taskRes && taskRes.data && taskRes.data.length) || 0,
-            feedCount: this.feeds.length
-          };
+        this.products = (productRes.list || []).filter((p) => p.status === "available");
+        this.taskStats = taskStats;
+
+        this.stats = {
+          productCount: productRes.total || 0,
+          orderCount: taskStats ? taskStats.publishedCompletedCount + taskStats.acceptedCompletedCount : 0,
+          taskCount: taskStats ? taskStats.publishedCount + taskStats.acceptedCount : 0,
+          feedCount: this.feeds.length
+        };
+
+        // 加载信用分
+        const trustRecord = await getTrustScore(this.userId).catch(() => null);
+        if (trustRecord) {
+          this.trustScore = trustRecord.score;
+          this.trustLevel = getTrustLevel(trustRecord.score);
+        }
+
+        // 如果自己的页面，用本地 profile 填充
+        if (this.isSelf && this.userStore.profile) {
+          if (!this.userInfo.nickName) {
+            this.userInfo = {
+              nickName: this.userStore.profile.nickName || "校园用户",
+              avatar: this.userStore.profile.avatar || "",
+              userId: this.userId
+            };
+          }
         }
 
         if (!this.userInfo.nickName) {
@@ -125,6 +160,27 @@ export default {
 
     goFeed(id) {
       uni.navigateTo({ url: `/pages/feeds/detail?id=${id}` });
+    },
+
+    reportUser() {
+      if (!this.myUserId) {
+        uni.navigateTo({ url: "/pages/login/login" });
+        return;
+      }
+      uni.showActionSheet({
+        itemList: REPORT_REASONS.map((r) => r.label),
+        success: async (res) => {
+          const reason = REPORT_REASONS[res.tapIndex];
+          if (!reason) { return; }
+          await submitReport({
+            targetType: "user",
+            targetId: this.userId,
+            reason: reason.value,
+            detail: `举报用户: ${this.userInfo.nickName || this.userId}`
+          }).catch(() => null);
+          uni.showToast({ title: "举报已提交", icon: "none" });
+        }
+      });
     },
 
     async goChat() {
@@ -176,10 +232,25 @@ export default {
 .item-row:last-child { border-bottom: none; }
 .item-title { flex: 1; color: #2b3345; font-size: 25rpx; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-price { color: #e74a62; font-size: 24rpx; font-weight: 700; flex-shrink: 0; margin-left: 12rpx; }
-.actions { margin-top: 20rpx; }
+.trust-row {
+  margin-top: 14rpx; display: flex; align-items: center; gap: 10rpx;
+  padding: 10rpx 16rpx; background: rgba(255, 255, 255, 0.7); border-radius: 12rpx;
+}
+.trust-icon { font-size: 24rpx; }
+.trust-text { font-size: 23rpx; font-weight: 600; }
+.helper-tag {
+  font-size: 20rpx; background: #eaf8f2; color: #23885f; border-radius: 999rpx;
+  padding: 4rpx 12rpx;
+}
+.actions { margin-top: 20rpx; display: flex; gap: 12rpx; }
 .chat-btn {
-  width: 100%; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; border: none;
+  flex: 1; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; border: none;
   background: linear-gradient(135deg, #2f6bff, #2459d6); color: #fff; font-size: 30rpx; font-weight: 600;
 }
 .chat-btn::after { border: none; }
+.report-btn {
+  width: 180rpx; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; border: none;
+  background: #f4f5f8; color: #8a93a7; font-size: 26rpx;
+}
+.report-btn::after { border: none; }
 </style>

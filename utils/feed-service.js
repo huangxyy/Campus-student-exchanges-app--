@@ -1,6 +1,7 @@
 import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
-import { getCloudDatabase, isCloudReady } from "@/utils/cloud";
+import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
+import { addPoints } from "@/utils/points-service";
 
 const FEEDS_KEY = "cm_feeds";
 const COMMENTS_KEY = "cm_feed_comments";
@@ -71,36 +72,6 @@ function getCommentCollection() {
   return db ? db.collection("feed_comments") : null;
 }
 
-// --- Image upload helper ---
-
-function buildFeedCloudPath(filePath) {
-  const extMatch = /\.[a-zA-Z0-9]+$/.exec(filePath || "");
-  const ext = extMatch ? extMatch[0] : ".jpg";
-  return `feeds/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-}
-
-async function uploadFeedImage(filePath) {
-  if (!filePath || typeof filePath !== "string") {
-    return "";
-  }
-  // Already cloud/http — no need to re-upload
-  if (filePath.startsWith("cloud://") || filePath.startsWith("https://") || filePath.startsWith("http://")) {
-    return filePath;
-  }
-  if (!isCloudReady() || typeof wx.cloud.uploadFile !== "function") {
-    return filePath;
-  }
-  const uploadRes = await wx.cloud.uploadFile({
-    cloudPath: buildFeedCloudPath(filePath),
-    filePath
-  });
-  return uploadRes.fileID || filePath;
-}
-
-async function uploadFeedImages(images = []) {
-  return Promise.all(images.map((fp) => uploadFeedImage(fp)));
-}
-
 // --- Cloud operations ---
 
 async function listFeedsFromCloud(topic) {
@@ -123,16 +94,13 @@ async function publishFeedToCloud(payload) {
     throw new Error("Cloud database is unavailable");
   }
 
-  // Upload images to cloud storage before saving
-  const uploadedImages = await uploadFeedImages(payload.images || []);
-
   const now = Date.now();
   const data = {
     authorId: payload.authorId,
     authorName: payload.authorName || "校园用户",
     authorAvatar: payload.authorAvatar || "",
     content: payload.content,
-    images: uploadedImages,
+    images: payload.images || [],
     topic: payload.topic || "",
     likeCount: 0,
     commentCount: 0,
@@ -183,21 +151,10 @@ async function toggleLikeInCloud(feedId, userId) {
   return true;
 }
 
-async function deleteFeedInCloud(feedId, userId) {
+async function deleteFeedInCloud(feedId) {
   const collection = getFeedCollection();
   if (!collection) {
     throw new Error("Cloud database is unavailable");
-  }
-
-  // Verify ownership before deleting
-  const feedRes = await collection.doc(feedId).get().catch(() => null);
-  if (!feedRes || !feedRes.data) {
-    return false;
-  }
-  const feed = normalizeFeed(feedRes.data);
-  if (feed.authorId && feed.authorId !== userId) {
-    console.warn("[FeedService] deleteFeedInCloud: permission denied");
-    return false;
   }
 
   const res = await collection.doc(feedId).update({
@@ -310,6 +267,7 @@ export async function publishFeed(payload) {
 
   const cloudFeed = await publishFeedToCloud(fullPayload).catch(() => null);
   if (cloudFeed) {
+    addPoints("publish_feed", cloudFeed.id).catch(() => null);
     return cloudFeed;
   }
 
@@ -322,6 +280,7 @@ export async function publishFeed(payload) {
   const list = readFeeds();
   list.unshift(feed);
   saveFeeds(list);
+  addPoints("publish_feed", feed.id).catch(() => null);
   await wait();
   return feed;
 }
@@ -364,7 +323,7 @@ export async function deleteFeed(feedId) {
     return false;
   }
 
-  const cloudResult = await deleteFeedInCloud(feedId, userId).catch(() => null);
+  const cloudResult = await deleteFeedInCloud(feedId).catch(() => null);
   if (typeof cloudResult === "boolean") {
     return cloudResult;
   }

@@ -1,11 +1,16 @@
 import { getCurrentProfile, getCurrentUserId, wait, generateId, createThrottledStorage } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
+import { safeCloudCall } from "@/utils/cloud-call";
 
 const throttledStorage = createThrottledStorage(200);
 
 const CONVERSATIONS_KEY = "cm_conversations";
 const MESSAGE_KEY_PREFIX = "cm_messages_";
+
+function logCloudFallback(action, error) {
+  console.warn(`[ChatService] ${action}: cloud failed, fallback to local`, error);
+}
 
 function getConversationsStorageKey(userId) {
   return `${CONVERSATIONS_KEY}_${userId || "guest"}`;
@@ -206,16 +211,35 @@ async function getConversationFromCloud(currentUserId, conversationId) {
   return normalizeConversation(raw, currentUserId);
 }
 
-async function getMessagesFromCloud(currentUserId, conversationId) {
+function normalizeMessageQueryOptions(options = {}) {
+  const rawLimit = Number(options.limit);
+  const rawAfter = Number(options.afterCreatedAt);
+  const limit = Number.isFinite(rawLimit) ? Math.min(200, Math.max(1, Math.floor(rawLimit))) : 200;
+  const afterCreatedAt = Number.isFinite(rawAfter) && rawAfter > 0 ? rawAfter : 0;
+  return {
+    limit,
+    afterCreatedAt
+  };
+}
+
+async function getMessagesFromCloud(currentUserId, conversationId, options = {}) {
   const messageCollection = getMessageCollection();
   if (!messageCollection) {
     throw new Error("Cloud database is unavailable");
   }
 
+  const { limit, afterCreatedAt } = normalizeMessageQueryOptions(options);
+  const db = getCloudDatabase();
+  const _ = db?.command;
+  const where = { conversationId };
+  if (afterCreatedAt > 0 && _) {
+    where.createdAt = _.gt(afterCreatedAt);
+  }
+
   const res = await messageCollection
-    .where({ conversationId })
+    .where(where)
     .orderBy("createdAt", "asc")
-    .limit(200)
+    .limit(limit)
     .get();
 
   return (res.data || []).map((item) => normalizeMessage(item, currentUserId));
@@ -470,7 +494,10 @@ export async function listConversations() {
     return [];
   }
 
-  const cloudList = await listConversationsFromCloud(userId).catch(() => null);
+  const cloudList = await safeCloudCall("ChatService.listConversations", () => listConversationsFromCloud(userId), {
+    fallbackValue: null,
+    onError: (error) => logCloudFallback("listConversations", error)
+  });
   if (cloudList) {
     return sortConversations(cloudList);
   }
@@ -486,7 +513,14 @@ export async function getConversation(conversationId) {
     return null;
   }
 
-  const cloudConversation = await getConversationFromCloud(userId, conversationId).catch(() => null);
+  const cloudConversation = await safeCloudCall(
+    "ChatService.getConversation",
+    () => getConversationFromCloud(userId, conversationId),
+    {
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("getConversation", error)
+    }
+  );
   if (cloudConversation) {
     return cloudConversation;
   }
@@ -496,20 +530,35 @@ export async function getConversation(conversationId) {
   return readConversations(userId).find((item) => item.id === conversationId) || null;
 }
 
-export async function getConversationMessages(conversationId) {
+export async function getConversationMessages(conversationId, options = {}) {
   const userId = getCurrentUserId();
   if (!userId) {
     return [];
   }
 
-  const cloudMessages = await getMessagesFromCloud(userId, conversationId).catch(() => null);
+  const normalizedOptions = normalizeMessageQueryOptions(options);
+  const cloudMessages = await safeCloudCall(
+    "ChatService.getConversationMessages",
+    () => getMessagesFromCloud(userId, conversationId, normalizedOptions),
+    {
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("getConversationMessages", error)
+    }
+  );
   if (cloudMessages) {
     return cloudMessages;
   }
 
   ensureSeedConversation(userId);
   await wait(30);
-  return readMessages(userId, conversationId).sort((a, b) => a.createdAt - b.createdAt);
+  const localMessages = readMessages(userId, conversationId).sort((a, b) => a.createdAt - b.createdAt);
+  if (normalizedOptions.afterCreatedAt > 0) {
+    return localMessages.filter((item) => Number(item?.createdAt || 0) > normalizedOptions.afterCreatedAt);
+  }
+  if (localMessages.length > normalizedOptions.limit) {
+    return localMessages.slice(localMessages.length - normalizedOptions.limit);
+  }
+  return localMessages;
 }
 
 export function watchConversationMessages(conversationId, handlers = {}) {
@@ -808,7 +857,14 @@ export async function sendTextMessage(conversationId, content) {
   }
 
   const safeContent = sanitizeText(content, { maxLength: 2000 });
-  const cloudMessage = await sendMessageToCloud(userId, conversationId, { type: "text", content: safeContent }).catch(() => null);
+  const cloudMessage = await safeCloudCall(
+    "ChatService.sendTextMessage",
+    () => sendMessageToCloud(userId, conversationId, { type: "text", content: safeContent }),
+    {
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("sendTextMessage", error)
+    }
+  );
   if (cloudMessage) {
     await wait(20);
     return cloudMessage;
@@ -841,9 +897,19 @@ async function sendCardMessage(conversationId, type, cardPayload) {
   }
 
   const preview = getCardPreview(type);
-  const cloudMessage = await sendMessageToCloud(userId, conversationId, {
-    type, content: preview, preview, cardPayload: safePayload
-  }).catch(() => null);
+  const cloudMessage = await safeCloudCall(
+    "ChatService.sendCardMessage",
+    () => sendMessageToCloud(userId, conversationId, {
+      type,
+      content: preview,
+      preview,
+      cardPayload: safePayload
+    }),
+    {
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("sendCardMessage", error)
+    }
+  );
   if (cloudMessage) {
     await wait(20);
     return cloudMessage;
@@ -966,9 +1032,19 @@ export async function sendImageMessage(conversationId, imageUrl) {
   }
 
   const preview = "[图片]";
-  const cloudMessage = await sendMessageToCloud(userId, conversationId, {
-    type: "image", content: preview, preview, imageUrl: safeUrl
-  }).catch(() => null);
+  const cloudMessage = await safeCloudCall(
+    "ChatService.sendImageMessage",
+    () => sendMessageToCloud(userId, conversationId, {
+      type: "image",
+      content: preview,
+      preview,
+      imageUrl: safeUrl
+    }),
+    {
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("sendImageMessage", error)
+    }
+  );
   if (cloudMessage) {
     await wait(20);
     return cloudMessage;

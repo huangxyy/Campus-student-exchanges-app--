@@ -91,6 +91,9 @@
         <button v-if="showCancelAction" class="ui-btn ui-btn-danger action-btn" :loading="submitting" @tap="changeStatus('cancelled')">
           取消任务
         </button>
+        <button v-if="showReportAction" class="ui-btn ui-btn-ghost action-btn" @tap="reportTask">
+          举报
+        </button>
       </view>
     </template>
   </view>
@@ -102,6 +105,7 @@ import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { createOrGetConversationByTask, getTaskConversationMeta } from "@/utils/chat-service";
 import { getTaskById, getTaskUserStats, takeTask, updateTaskStatus } from "@/utils/task-service";
+import { submitReport, REPORT_REASONS } from "@/utils/report-service";
 
 export default {
   components: {
@@ -326,6 +330,10 @@ export default {
       return ["open", "assigned", "picked_up", "delivered"].includes(this.task.status);
     },
 
+    showReportAction() {
+      return !!this.task && this.isLogin && !this.isOwner;
+    },
+
     showAnyAction() {
       return (
         this.showLoginAction ||
@@ -335,7 +343,8 @@ export default {
         this.showPickedUpAction ||
         this.showDeliveredAction ||
         this.showCompleteAction ||
-        this.showCancelAction
+        this.showCancelAction ||
+        this.showReportAction
       );
     }
   },
@@ -609,6 +618,34 @@ export default {
       } finally {
         this.submitting = false;
       }
+    },
+
+    reportTask() {
+      if (!this.isLogin) {
+        this.goLogin();
+        return;
+      }
+      if (!this.task) { return; }
+
+      const labels = REPORT_REASONS.map((r) => r.label);
+      uni.showActionSheet({
+        itemList: labels,
+        success: async (res) => {
+          const selected = REPORT_REASONS[res.tapIndex];
+          if (!selected) { return; }
+          try {
+            await submitReport({
+              targetType: "task",
+              targetId: this.task.id,
+              reason: selected.value,
+              detail: `举报任务: ${this.task.title}`
+            });
+            uni.showToast({ title: "举报已提交，感谢反馈", icon: "success" });
+          } catch (error) {
+            uni.showToast({ title: error?.message || "举报失败", icon: "none" });
+          }
+        }
+      });
     },
 
     async changeStatus(status) {

@@ -2,11 +2,17 @@
 import { getCloudDatabase, isCloudReady } from "@/utils/cloud";
 import { generateId as generateUniqueId, getCurrentUserId, createRateLimiter } from "@/utils/common";
 import { sanitizeText, sanitizeNumber } from "@/utils/sanitize";
+import { safeCloudCall } from "@/utils/cloud-call";
+import { addPoints } from "@/utils/points-service";
 
 const publishLimiter = createRateLimiter(3000);
 
 const CUSTOM_PRODUCT_KEY = "cm_custom_products";
 const CLOUD_PRODUCT_FOLDER = "products";
+
+function logCloudFallback(action, error) {
+  console.warn(`[ProductService] ${action}: cloud failed, fallback to local`, error);
+}
 
 function isCloudDatabaseReady() {
   return !!getCloudDatabase();
@@ -158,6 +164,17 @@ function applyKeywordFilter(list = [], keyword = "") {
   });
 }
 
+function hasAdvancedFilters(filters = {}) {
+  const normalized = normalizeQueryFilters(filters);
+  return (
+    typeof normalized.priceMin === "number" ||
+    typeof normalized.priceMax === "number" ||
+    normalized.conditions.length > 0 ||
+    normalized.locations.length > 0 ||
+    !!normalized.nearbyEnabled
+  );
+}
+
 async function queryProductsFromCloud(params = {}) {
   const {
     keyword = "",
@@ -198,19 +215,46 @@ async function queryProductsFromCloud(params = {}) {
     orderDirection = "desc";
   }
 
+  const skip = (page - 1) * pageSize;
+  const noKeyword = !String(keyword || "").trim();
+  const hasExtraFilters = hasAdvancedFilters(filters);
+  const canUseDirectCloudPaging = noKeyword && !hasExtraFilters && sortBy !== "distance";
+
+  if (canUseDirectCloudPaging) {
+    const [countRes, listRes] = await Promise.all([
+      db.collection("products").where(where).count(),
+      db
+        .collection("products")
+        .where(where)
+        .orderBy(orderBy, orderDirection)
+        .skip(skip)
+        .limit(pageSize)
+        .get()
+    ]);
+
+    const list = listRes.data || [];
+    const total = countRes.total || 0;
+    return {
+      list,
+      total,
+      noMore: skip + list.length >= total
+    };
+  }
+
+  // 需要前端补充筛选/排序时，按当前分页自适应拉取窗口，避免每次固定拉满 100
   // 微信云数据库单次查询最大 limit 为 100
+  const fetchSize = Math.min(100, Math.max(pageSize * 2, skip + pageSize));
   const res = await db
     .collection("products")
     .where(where)
     .orderBy(orderBy, orderDirection)
-    .limit(100)
+    .limit(fetchSize)
     .get();
 
   const keywordFiltered = applyKeywordFilter(res.data || [], keyword);
   const filtered = applyAdvancedFilters(keywordFiltered, filters);
   const sorted = sortList(filtered, sortBy);
   const total = sorted.length;
-  const skip = (page - 1) * pageSize;
   const list = sorted.slice(skip, skip + pageSize);
 
   return {
@@ -361,7 +405,11 @@ async function publishProductToCloud(payload) {
 
 export async function queryProducts(params = {}) {
   if (isCloudDatabaseReady()) {
-    const cloudResult = await queryProductsFromCloud(params).catch(() => null);
+    const cloudResult = await safeCloudCall("ProductService.queryProducts", () => queryProductsFromCloud(params), {
+      maxRetries: 1,
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("queryProducts", error)
+    });
     if (cloudResult) {
       return cloudResult;
     }
@@ -402,7 +450,10 @@ export async function queryProducts(params = {}) {
 
 export async function getProductById(id) {
   if (isCloudDatabaseReady()) {
-    const cloudProduct = await getProductByIdFromCloud(id).catch(() => null);
+    const cloudProduct = await safeCloudCall("ProductService.getProductById", () => getProductByIdFromCloud(id), {
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("getProductById", error)
+    });
     if (cloudProduct) {
       return cloudProduct;
     }
@@ -452,8 +503,13 @@ export async function publishProduct(payload) {
   }
 
   if (isCloudDatabaseReady()) {
-    const cloudDraft = await publishProductToCloud(payload).catch(() => null);
+    const cloudDraft = await safeCloudCall("ProductService.publishProduct", () => publishProductToCloud(payload), {
+      maxRetries: 1,
+      fallbackValue: null,
+      onError: (error) => logCloudFallback("publishProduct", error)
+    });
     if (cloudDraft) {
+      addPoints("publish_product", cloudDraft._id).catch(() => null);
       return cloudDraft;
     }
   }
@@ -462,6 +518,7 @@ export async function publishProduct(payload) {
   const customProducts = readCustomProducts();
   customProducts.unshift(localDraft);
   saveCustomProducts(customProducts);
+  addPoints("publish_product", localDraft._id).catch(() => null);
   await delay(100);
   return localDraft;
 }
@@ -496,7 +553,14 @@ export async function queryProductsByUser(userId, options = {}) {
   }
 
   if (isCloudDatabaseReady()) {
-    const cloudResult = await queryProductsByUserFromCloud(userId, { page, pageSize }).catch(() => null);
+    const cloudResult = await safeCloudCall(
+      "ProductService.queryProductsByUser",
+      () => queryProductsByUserFromCloud(userId, { page, pageSize }),
+      {
+        fallbackValue: null,
+        onError: (error) => logCloudFallback("queryProductsByUser", error)
+      }
+    );
     if (cloudResult) {
       return cloudResult;
     }
@@ -513,10 +577,17 @@ export async function queryProductsByUser(userId, options = {}) {
   return { list, total, noMore: start + list.length >= total };
 }
 
-async function updateProductStatusInCloud(productId, status) {
+async function updateProductStatusInCloud(productId, status, userId) {
   const db = getCloudDatabase();
   if (!db) {
     throw new Error("Cloud database is unavailable");
+  }
+
+  const productRes = await db.collection("products").doc(productId).get();
+  const ownerId = productRes?.data?.userId;
+  if (ownerId && ownerId !== userId) {
+    console.warn("[ProductService] updateProductStatusInCloud: permission denied");
+    return false;
   }
 
   await db.collection("products").doc(productId).update({
@@ -547,7 +618,14 @@ export async function updateProductStatus(productId, status) {
   }
 
   if (isCloudDatabaseReady()) {
-    const cloudUpdated = await updateProductStatusInCloud(productId, status).catch(() => false);
+    const cloudUpdated = await safeCloudCall(
+      "ProductService.updateProductStatus",
+      () => updateProductStatusInCloud(productId, status, userId),
+      {
+        fallbackValue: false,
+        onError: (error) => logCloudFallback("updateProductStatus", error)
+      }
+    );
     if (cloudUpdated) {
       return true;
     }
@@ -585,9 +663,27 @@ export async function deleteProduct(productId) {
       const cloudDeleted = await db
         .collection("products")
         .doc(productId)
-        .remove()
-        .then(() => true)
-        .catch(() => false);
+        .get()
+        .then((res) => {
+          const ownerId = res?.data?.userId;
+          if (ownerId && ownerId !== userId) {
+            console.warn("[ProductService] deleteProduct: cloud permission denied");
+            return false;
+          }
+          return db
+            .collection("products")
+            .doc(productId)
+            .remove()
+            .then(() => true)
+            .catch((error) => {
+              logCloudFallback("deleteProduct.remove", error);
+              return false;
+            });
+        })
+        .catch((error) => {
+          logCloudFallback("deleteProduct.get", error);
+          return false;
+        });
       if (cloudDeleted) {
         return true;
       }
@@ -619,7 +715,10 @@ export async function increaseProductViews(productId) {
           }
         })
         .then(() => true)
-        .catch(() => false);
+        .catch((error) => {
+          logCloudFallback("increaseProductViews", error);
+          return false;
+        });
       if (cloudOk) {
         return;
       }
@@ -640,3 +739,4 @@ export async function increaseProductViews(productId) {
     }
   }
 }
+

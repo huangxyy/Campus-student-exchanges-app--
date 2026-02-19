@@ -1,6 +1,8 @@
 <script>
 import { initCloud } from "@/utils/cloud";
 import { getFestivalTheme, getSeasonTheme } from "@/utils/easter-eggs";
+import { getStoredToken } from "@/utils/auth";
+import { listConversations } from "@/utils/chat-service";
 
 export default {
   globalData: {
@@ -25,6 +27,27 @@ export default {
           duration: 3500
         });
       }, 1500);
+    }
+
+    // 初始化未读消息角标
+    this.initUnreadBadge();
+  },
+
+  methods: {
+    async initUnreadBadge() {
+      try {
+        const token = getStoredToken();
+        if (!token) {
+          return;
+        }
+        const conversations = await listConversations().catch(() => []);
+        const unread = conversations.reduce((sum, item) => sum + (item.unread || 0), 0);
+        if (unread > 0) {
+          uni.setTabBarBadge({ index: 2, text: unread > 99 ? "99+" : String(unread) });
+        }
+      } catch (e) {
+        // non-blocking
+      }
     }
   }
 };
@@ -110,11 +133,18 @@ page {
   color: $danger-color;
 }
 
+.ui-btn-muted {
+  background: #e8ecf2;
+  color: #8a95ac;
+  opacity: 0.7;
+}
+
 button.ui-btn::after,
 button.ui-btn-primary::after,
 button.ui-btn-secondary::after,
 button.ui-btn-ghost::after,
-button.ui-btn-danger::after {
+button.ui-btn-danger::after,
+button.ui-btn-muted::after {
   border: none;
 }
 

@@ -10,8 +10,53 @@ const categoryMap = {
   other: "其他"
 };
 
+const ALLOWED_CATEGORIES = new Set(Object.keys(categoryMap));
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeCategory(event) {
+  if (event === null || event === undefined) {
+    return { ok: true, category: "other" };
+  }
+
+  if (!isPlainObject(event)) {
+    return { ok: false, message: "Invalid event payload" };
+  }
+
+  const rawCategory = event.category;
+  if (rawCategory === null || rawCategory === undefined || rawCategory === "") {
+    return { ok: true, category: "other" };
+  }
+
+  if (typeof rawCategory !== "string") {
+    return { ok: false, message: "category must be a string" };
+  }
+
+  if (rawCategory.length > 30) {
+    return { ok: false, message: "category is too long" };
+  }
+
+  const category = rawCategory.trim().toLowerCase();
+  if (!ALLOWED_CATEGORIES.has(category)) {
+    return { ok: false, message: "category is not allowed" };
+  }
+
+  return { ok: true, category };
+}
+
 exports.main = async (event) => {
-  const category = event.category || "other";
+  const categoryRes = normalizeCategory(event);
+  if (!categoryRes.ok) {
+    return {
+      success: false,
+      code: -1,
+      message: categoryRes.message || "Invalid payload"
+    };
+  }
+
+  const category = categoryRes.category;
   const categoryText = categoryMap[category] || "校园好物";
 
   return {

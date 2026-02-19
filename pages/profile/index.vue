@@ -20,24 +20,29 @@
               <text class="rating-icon">{{ trustLevel.icon || '⭐' }}</text>
               <text :style="{ color: trustLevel.color }">{{ trustLevel.level }} {{ trustScore }}分</text>
             </view>
-            <view class="id-chip anim-scale-in anim-d3">学号待绑定</view>
+            <view class="id-chip anim-scale-in anim-d3">{{ profile.studentId ? ('学号 ' + profile.studentId) : '学号待绑定' }}</view>
           </view>
         </view>
       </view>
       <view class="stats-row anim-slide-up anim-d3">
         <view class="stat-item press-able" @tap="goMyProducts">
-          <text class="stat-value num-animate">{{ profile.productCount || 0 }}</text>
+          <text class="stat-value num-animate">{{ realProductCount }}</text>
           <text class="stat-label">商品</text>
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item press-able" @tap="goMyTasks">
-          <text class="stat-value num-animate">{{ profile.taskCount || 0 }}</text>
+          <text class="stat-value num-animate">{{ realTaskCount }}</text>
           <text class="stat-label">任务</text>
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item press-able" @tap="goFavorites">
-          <text class="stat-value num-animate">{{ profile.favoriteCount || 0 }}</text>
+          <text class="stat-value num-animate">{{ realFavoriteCount }}</text>
           <text class="stat-label">收藏</text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item press-able" @tap="goPage('/pages/points/index')">
+          <text class="stat-value num-animate">{{ realPoints }}</text>
+          <text class="stat-label">积分</text>
         </view>
       </view>
     </view>
@@ -104,10 +109,11 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
+import { createTapCounter, getRandomAvatarSecret, getRandomFunFact } from "@/utils/easter-eggs";
 import { queryProductsByUser } from "@/utils/product-service";
 import { listMyTasks } from "@/utils/task-service";
 import { listFavorites } from "@/utils/favorite-service";
-import { createTapCounter, getRandomAvatarSecret, getRandomFunFact } from "@/utils/easter-eggs";
+import { getMyPoints } from "@/utils/points-service";
 
 let _ratingTapper = null;
 
@@ -116,10 +122,11 @@ export default {
     return {
       trustScore: 0,
       trustLevel: { level: "", color: "#8a93a7", icon: "" },
-      productCount: 0,
-      taskCount: 0,
-      favoriteCount: 0,
       avatarSpinning: false,
+      realProductCount: 0,
+      realTaskCount: 0,
+      realFavoriteCount: 0,
+      realPoints: 0,
       menuItems: [
         { key: "products", icon: "🛒", label: "我的商品", desc: "管理在售与已下架商品", tone: "tone-blue" },
         { key: "orders", icon: "📦", label: "我的订单", desc: "交易进度与评价", tone: "tone-ocean" },
@@ -144,23 +151,22 @@ export default {
     },
 
     profile() {
-      const base = this.userStore.profile || {
-        nickName: "校园用户",
-        avatar: "https://picsum.photos/seed/profile-default/120/120",
-        rating: 5
-      };
-      return {
-        ...base,
-        productCount: this.productCount,
-        taskCount: this.taskCount,
-        favoriteCount: this.favoriteCount
-      };
+      return (
+        this.userStore.profile || {
+          nickName: "校园用户",
+          avatar: "https://picsum.photos/seed/profile-default/120/120",
+          rating: 5,
+          productCount: 0,
+          taskCount: 0,
+          favoriteCount: 0
+        }
+      );
     }
   },
 
   onShow() {
     this.loadTrustScore();
-    this.loadCounts();
+    this.loadProfileStats();
   },
 
   methods: {
@@ -175,25 +181,25 @@ export default {
       }
     },
 
-    async loadCounts() {
+    async loadProfileStats() {
       if (!this.isLogin) { return; }
-      const userId = this.userStore.profile?.userId || "";
+      const userId = this.profile?.userId;
       if (!userId) { return; }
 
-      const [productsRes, tasksRes, favoritesRes] = await Promise.all([
-        queryProductsByUser(userId, { page: 1, pageSize: 1 }).catch(() => null),
-        listMyTasks(userId).catch(() => null),
-        listFavorites().catch(() => null)
-      ]);
+      try {
+        const [productRes, taskRes, favList, pointsData] = await Promise.all([
+          queryProductsByUser(userId, { page: 1, pageSize: 1 }).catch(() => ({ total: 0 })),
+          listMyTasks(userId).catch(() => ({ published: [], accepted: [] })),
+          listFavorites().catch(() => []),
+          getMyPoints().catch(() => ({ total: 0 }))
+        ]);
 
-      if (productsRes) {
-        this.productCount = productsRes.total || 0;
-      }
-      if (tasksRes) {
-        this.taskCount = (tasksRes.published?.length || 0) + (tasksRes.accepted?.length || 0);
-      }
-      if (favoritesRes) {
-        this.favoriteCount = favoritesRes.length || 0;
+        this.realProductCount = productRes.total || 0;
+        this.realTaskCount = (taskRes.published?.length || 0) + (taskRes.accepted?.length || 0);
+        this.realFavoriteCount = favList.length || 0;
+        this.realPoints = pointsData.total || 0;
+      } catch (e) {
+        // fallback - use 0s
       }
     },
 

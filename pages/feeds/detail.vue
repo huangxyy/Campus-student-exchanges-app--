@@ -42,6 +42,12 @@
           <view class="stat-item">
             <text>💬 {{ comments.length }} 评论</text>
           </view>
+          <view class="stat-item" @tap="reportFeed" v-if="!isOwner">
+            <text>🚩 举报</text>
+          </view>
+          <view class="stat-item delete-action" @tap="handleDeleteFeed" v-if="isOwner">
+            <text>🗑️ 删除</text>
+          </view>
         </view>
       </view>
 
@@ -80,7 +86,8 @@
 import EmptyState from "@/components/empty-state/empty-state.vue";
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
-import { getFeedById, toggleLike, listComments, addComment } from "@/utils/feed-service";
+import { getFeedById, toggleLike, listComments, addComment, deleteFeed } from "@/utils/feed-service";
+import { submitReport, REPORT_REASONS } from "@/utils/report-service";
 
 export default {
   components: { EmptyState },
@@ -102,7 +109,8 @@ export default {
     userStore() { return useUserStore(); },
     isLogin() { return this.userStore.isLogin; },
     myUserId() { return this.userStore.profile?.userId || ""; },
-    isLiked() { return this.feed && this.feed.likedBy && this.feed.likedBy.includes(this.myUserId); }
+    isLiked() { return this.feed && this.feed.likedBy && this.feed.likedBy.includes(this.myUserId); },
+    isOwner() { return this.feed && this.myUserId && this.feed.authorId === this.myUserId; }
   },
 
   onLoad(query) {
@@ -174,6 +182,49 @@ export default {
       }
     },
 
+    reportFeed() {
+      if (!this.isLogin) {
+        uni.navigateTo({ url: "/pages/login/login" });
+        return;
+      }
+      const labels = REPORT_REASONS.map((r) => r.label);
+      uni.showActionSheet({
+        itemList: labels,
+        success: async (res) => {
+          const selected = REPORT_REASONS[res.tapIndex];
+          if (!selected) { return; }
+          try {
+            await submitReport({
+              targetType: "feed",
+              targetId: this.feedId,
+              reason: selected.value,
+              detail: `举报动态: ${(this.feed.content || "").slice(0, 30)}`
+            });
+            uni.showToast({ title: "举报已提交，感谢反馈", icon: "success" });
+          } catch (error) {
+            uni.showToast({ title: error?.message || "举报失败", icon: "none" });
+          }
+        }
+      });
+    },
+
+    handleDeleteFeed() {
+      uni.showModal({
+        title: "删除动态",
+        content: "确定删除这条动态？删除后不可恢复。",
+        success: async (res) => {
+          if (!res.confirm) { return; }
+          const ok = await deleteFeed(this.feedId);
+          if (ok) {
+            uni.showToast({ title: "已删除", icon: "success" });
+            setTimeout(() => { uni.navigateBack(); }, 600);
+          } else {
+            uni.showToast({ title: "删除失败", icon: "none" });
+          }
+        }
+      });
+    },
+
     goBack() { uni.navigateBack(); }
   }
 };
@@ -230,6 +281,7 @@ export default {
   transition: color 0.2s ease;
 }
 .stat-item.liked { color: #e63950; }
+.stat-item.delete-action { color: #e25269; }
 .like-icon { display: inline-block; font-size: 26rpx; }
 .comment-section { margin-top: 14rpx; padding: 22rpx; }
 .section-title { color: #1a2540; font-size: 27rpx; font-weight: 700; margin-bottom: 14rpx; }

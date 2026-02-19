@@ -141,7 +141,7 @@ export default {
       return diff > 0 && diff <= 1000 * 60 * 60 * 2;
     },
 
-    async takeExpressTask(task) {
+    takeExpressTask(task) {
       if (!this.isLogin) {
         uni.navigateTo({
           url: "/pages/login/login"
@@ -166,20 +166,31 @@ export default {
         return;
       }
 
-      const ok = await takeTask(task.id, profile.nickName || "校园用户", profile.userId);
-      if (!ok) {
-        uni.showToast({
-          title: "抢单失败，请刷新后重试",
-          icon: "none"
-        });
-        return;
-      }
+      uni.showModal({
+        title: "确认抢单",
+        content: `确认抢取快递代取任务？\n赏金 ¥${task.reward}，地点：${task.location || '待定'}\n${this.getCountdownText(task)}`,
+        confirmText: "确认抢单",
+        success: async (res) => {
+          if (!res.confirm) {
+            return;
+          }
 
-      uni.showToast({
-        title: "抢单成功",
-        icon: "success"
+          const ok = await takeTask(task.id, profile.nickName || "校园用户", profile.userId);
+          if (!ok) {
+            uni.showToast({
+              title: "抢单失败，请刷新后重试",
+              icon: "none"
+            });
+            return;
+          }
+
+          uni.showToast({
+            title: "抢单成功",
+            icon: "success"
+          });
+          this.loadTasks();
+        }
       });
-      this.loadTasks();
     }
   }
 };

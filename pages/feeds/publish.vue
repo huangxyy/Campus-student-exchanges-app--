@@ -44,7 +44,6 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { publishFeed } from "@/utils/feed-service";
-import { addPoints } from "@/utils/points-service";
 
 export default {
   data() {
@@ -98,12 +97,11 @@ export default {
 
       this.submitting = true;
       try {
-        const feed = await publishFeed({
+        await publishFeed({
           content: this.form.content,
           topic: this.form.topic,
           images: this.form.images
         });
-        await addPoints("publish_feed", feed.id).catch(() => null);
         uni.showToast({ title: "发布成功", icon: "success" });
         setTimeout(() => uni.navigateBack(), 500);
       } catch (error) {

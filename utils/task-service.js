@@ -459,6 +459,7 @@ export async function getTaskById(taskId) {
 export async function publishTask(payload) {
   const cloudTask = await publishTaskToCloud(payload).catch(() => null);
   if (cloudTask) {
+    addPoints("publish_task", cloudTask.id).catch(() => null);
     return cloudTask;
   }
 
@@ -490,6 +491,7 @@ export async function publishTask(payload) {
   };
   list.unshift(task);
   saveTasks(list);
+  addPoints("publish_task", task.id).catch(() => null);
   await wait();
   return task;
 }
@@ -568,7 +570,8 @@ export async function updateTaskStatus(taskId, status, operatorUserId) {
   const cloudResult = await updateTaskStatusInCloud(taskId, status, operatorUserId).catch(() => null);
   if (typeof cloudResult === "boolean") {
     if (cloudResult && status === "completed") {
-      await handleTaskCompletionSideEffects(taskId).catch(() => null);
+      addPoints("complete_task", taskId).catch(() => null);
+      recordTaskCompletion().catch(() => null);
     }
     return cloudResult;
   }
@@ -602,18 +605,10 @@ export async function updateTaskStatus(taskId, status, operatorUserId) {
   saveTasks(list);
 
   if (status === "completed") {
-    await handleTaskCompletionSideEffects(taskId).catch(() => null);
+    addPoints("complete_task", taskId).catch(() => null);
+    recordTaskCompletion().catch(() => null);
   }
 
   await wait();
   return true;
-}
-
-async function handleTaskCompletionSideEffects(taskId) {
-  try {
-    await addPoints("complete_task", taskId).catch(() => null);
-    await recordTaskCompletion().catch(() => null);
-  } catch (error) {
-    console.warn("[TaskService] completion side effect error:", error);
-  }
 }

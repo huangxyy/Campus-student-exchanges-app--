@@ -25,35 +25,40 @@
       @scroll="onMessageScroll"
       @scrolltolower="onMessageScrollToLower"
     >
-      <view
-        v-for="item in messages"
-        :key="item.id"
-        :class="['message-row', item.sender === 'me' ? 'me' : item.sender === 'system' ? 'system' : 'peer']"
-      >
-        <image
-          v-if="item.type === 'image'"
-          class="image-bubble"
-          :src="item.imageUrl"
-          mode="aspectFill"
-          @tap="previewMessageImage(item)"
-        />
-        <view
-          v-else-if="item.type === 'product_card' || item.type === 'task_card'"
-          class="card-bubble"
-          @tap="openCardPayload(item)"
-        >
-          <view class="card-type">{{ item.type === 'product_card' ? '商品卡片' : '任务卡片' }}</view>
-          <view class="card-title">{{ item.cardPayload?.title || '未命名卡片' }}</view>
-          <view class="card-subtitle">{{ item.cardPayload?.subtitle || '点击查看详情' }}</view>
-          <view v-if="item.cardPayload?.priceText" class="card-price">{{ item.cardPayload.priceText }}</view>
+      <template v-for="(item, idx) in messages" :key="item.id">
+        <!-- 日期分隔线 -->
+        <view v-if="shouldShowDateDivider(idx)" class="date-divider">
+          <text class="date-text">{{ getDateLabel(item.createdAt) }}</text>
         </view>
-        <view v-else class="bubble">{{ item.content }}</view>
 
-        <view class="time-row">
-          <view class="time">{{ formatTime(item.createdAt) }}</view>
-          <view v-if="item.sender === 'me' && item.type !== 'system'" class="status-text">{{ getMessageStatusText(item) }}</view>
+        <view
+          :class="['message-row', item.sender === 'me' ? 'me' : item.sender === 'system' ? 'system' : 'peer']"
+        >
+          <image
+            v-if="item.type === 'image'"
+            class="image-bubble"
+            :src="item.imageUrl"
+            mode="aspectFill"
+            @tap="previewMessageImage(item)"
+          />
+          <view
+            v-else-if="item.type === 'product_card' || item.type === 'task_card'"
+            class="card-bubble"
+            @tap="openCardPayload(item)"
+          >
+            <view class="card-type">{{ item.type === 'product_card' ? '商品卡片' : '任务卡片' }}</view>
+            <view class="card-title">{{ item.cardPayload?.title || '未命名卡片' }}</view>
+            <view class="card-subtitle">{{ item.cardPayload?.subtitle || '点击查看详情' }}</view>
+            <view v-if="item.cardPayload?.priceText" class="card-price">{{ item.cardPayload.priceText }}</view>
+          </view>
+          <view v-else class="bubble">{{ item.content }}</view>
+
+          <view class="time-row">
+            <view class="time">{{ formatTime(item.createdAt) }}</view>
+            <view v-if="item.sender === 'me' && item.type !== 'system'" class="status-text">{{ getMessageStatusText(item) }}</view>
+          </view>
         </view>
-      </view>
+      </template>
     </scroll-view>
 
     <view v-if="hasNewMessageTip" class="new-message-tip card" @tap="jumpToLatest">
@@ -81,7 +86,7 @@
 </template>
 
 <script>
-import { formatRelativeTime } from "@/utils/date";
+import { formatRelativeTime, isSameDay, isToday } from "@/utils/date";
 import {
   getConversation,
   getConversationMessages,
@@ -189,7 +194,7 @@ export default {
           }, 350);
           return;
         }
-        this.messages = await getConversationMessages(this.conversationId);
+        this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
         await markConversationRead(this.conversationId).catch(() => false);
         this.resetBottomState();
         this.maxSeenScrollTop = 0;
@@ -245,21 +250,29 @@ export default {
         if (!this.conversationId) {
           return;
         }
-        const latest = await getConversationMessages(this.conversationId).catch(() => null);
-        if (!latest) {
+        const latestCreatedAt = Number(this.messages[this.messages.length - 1]?.createdAt || 0);
+        const incremental = await getConversationMessages(this.conversationId, {
+          afterCreatedAt: latestCreatedAt,
+          limit: 80
+        }).catch(() => null);
+        if (!incremental || incremental.length === 0) {
           return;
         }
 
-        const latestTail = latest[latest.length - 1]?.id || "";
-        const currentTail = this.messages[this.messages.length - 1]?.id || "";
-        const lengthChanged = latest.length !== this.messages.length;
-        const tailChanged = latestTail !== currentTail;
-        if (!lengthChanged && !tailChanged) {
-          return;
-        }
-
-        try { await this.applyRealtimeMessages(latest); } catch (e) { /* ignore */ }
+        const merged = this.mergeMessages(this.messages, incremental);
+        try { await this.applyRealtimeMessages(merged); } catch (e) { /* ignore */ }
       }, 3000);
+    },
+
+    mergeMessages(baseList = [], incomingList = []) {
+      const map = new Map();
+      [...baseList, ...incomingList].forEach((item) => {
+        if (!item || !item.id) {
+          return;
+        }
+        map.set(item.id, item);
+      });
+      return Array.from(map.values()).sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
     },
 
     async applyRealtimeMessages(latest) {
@@ -301,6 +314,34 @@ export default {
       this.messages = this.messages.map((item) =>
         item.id === tempId ? { ...item, status: "failed" } : item
       );
+    },
+
+    shouldShowDateDivider(idx) {
+      if (idx === 0) {
+        return true;
+      }
+      const current = this.messages[idx];
+      const prev = this.messages[idx - 1];
+      if (!current || !prev) {
+        return false;
+      }
+      return !isSameDay(current.createdAt, prev.createdAt);
+    },
+
+    getDateLabel(timestamp) {
+      if (!timestamp) {
+        return "";
+      }
+      if (isToday(timestamp)) {
+        return "今天";
+      }
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (isSameDay(timestamp, yesterday.getTime())) {
+        return "昨天";
+      }
+      const d = new Date(timestamp);
+      return `${d.getMonth() + 1}月${d.getDate()}日`;
     },
 
     formatTime(timestamp) {
@@ -374,7 +415,7 @@ export default {
       try {
         await sendTextMessage(this.conversationId, text);
         this.draft = "";
-        this.messages = await getConversationMessages(this.conversationId);
+        this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
       } catch (error) {
         this.markMessageFailed(tempId);
         uni.showToast({ title: "发送失败，请重试", icon: "none" });
@@ -404,7 +445,7 @@ export default {
 
           try {
             await sendImageMessage(this.conversationId, imagePath);
-            this.messages = await getConversationMessages(this.conversationId);
+            this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
           } catch (error) {
             this.markMessageFailed(tempId);
             uni.showToast({ title: "图片发送失败", icon: "none" });
@@ -506,7 +547,7 @@ export default {
             } else {
               await sendTaskCardMessage(this.conversationId, selected.payload);
             }
-            this.messages = await getConversationMessages(this.conversationId);
+            this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
           } catch (error) {
             this.markMessageFailed(tempId);
             uni.showToast({ title: "卡片发送失败", icon: "none" });
@@ -664,6 +705,21 @@ export default {
 .new-message-tip .tip-text {
   font-size: 22rpx;
   color: #375189;
+}
+
+.date-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20rpx 0 12rpx;
+}
+
+.date-text {
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(140, 150, 170, 0.12);
+  color: #8a93a7;
+  font-size: 20rpx;
 }
 
 .message-row {

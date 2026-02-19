@@ -33,12 +33,33 @@
       </view>
     </view>
 
+    <view class="profile-form glass-strong anim-slide-up anim-d5" style="border-radius: 24rpx;">
+      <view class="form-title">设置你的个人信息</view>
+      <view class="form-row">
+        <text class="form-label">头像</text>
+        <button class="avatar-choose" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
+          <image v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" mode="aspectFill" />
+          <text v-else class="avatar-placeholder">点击选择</text>
+        </button>
+      </view>
+      <view class="form-row">
+        <text class="form-label">昵称</text>
+        <input
+          type="nickname"
+          v-model="nickName"
+          class="nickname-input"
+          placeholder="输入你的昵称"
+          @blur="onNicknameBlur"
+        />
+      </view>
+    </view>
+
     <button class="login-btn btn-bounce anim-scale-in anim-d6" :loading="loading" @tap="handleLogin">
       <text v-if="!loading" class="btn-icon">✦</text>
       {{ loading ? "登录中..." : "微信一键登录" }}
     </button>
 
-    <view class="tips anim-fade-in anim-d7">首次登录后可在「我的」页面补充学号与联系方式</view>
+    <view class="tips anim-fade-in anim-d7">选择头像和昵称后点击登录，也可跳过直接登录</view>
 
     <view class="policy anim-fade-in anim-d8">
       登录代表你同意
@@ -57,6 +78,8 @@ export default {
   data() {
     return {
       loading: false,
+      nickName: "",
+      avatarUrl: "",
       features: [
         { icon: "🛒", title: "二手好物", desc: "校内面交更安心", tone: "ft-blue" },
         { icon: "📌", title: "任务互助", desc: "代取代课快速抢单", tone: "ft-amber" },
@@ -81,6 +104,18 @@ export default {
     goPrivacy() {
       uni.navigateTo({ url: "/pages/legal/privacy" });
     },
+    onChooseAvatar(e) {
+      const url = e.detail?.avatarUrl;
+      if (url) {
+        this.avatarUrl = url;
+      }
+    },
+
+    onNicknameBlur(e) {
+      const value = e.detail?.value || "";
+      this.nickName = value.trim();
+    },
+
     async handleLogin() {
       if (this.loading) {
         return;
@@ -88,11 +123,9 @@ export default {
 
       this.loading = true;
       try {
-        // wx.getUserProfile 已于2022年11月废弃，直接使用默认信息
-        // 后续可改用 <button open-type="chooseAvatar"> + <input type="nickname"> 方案
         const profile = {
-          nickName: "校园用户",
-          avatarUrl: "https://picsum.photos/seed/default-user/120/120"
+          nickName: this.nickName || "校园用户",
+          avatarUrl: this.avatarUrl || "https://picsum.photos/seed/default-user/120/120"
         };
 
         const auth = await loginWithProfile(profile);
@@ -286,8 +319,82 @@ export default {
   font-size: 22rpx;
 }
 
+.profile-form {
+  margin-top: 28rpx;
+  padding: 24rpx;
+}
+
+.form-title {
+  color: #1a2540;
+  font-size: 26rpx;
+  font-weight: 700;
+  margin-bottom: 18rpx;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid rgba(228, 235, 251, 0.5);
+}
+
+.form-row:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  color: #4a5a78;
+  font-size: 26rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.avatar-choose {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-choose::after {
+  border: none;
+}
+
+.avatar-preview {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 2rpx solid #e3eaf9;
+}
+
+.avatar-placeholder {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #f0f4fc;
+  border: 2rpx dashed #c8d0e4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20rpx;
+  color: #8a95ac;
+}
+
+.nickname-input {
+  flex: 1;
+  text-align: right;
+  height: 60rpx;
+  font-size: 26rpx;
+  color: #2b3345;
+  margin-left: 20rpx;
+}
+
 .login-btn {
-  margin-top: 44rpx;
+  margin-top: 28rpx;
   height: 96rpx;
   border-radius: 48rpx;
   background: linear-gradient(135deg, #2f6bff, #5b8af5);

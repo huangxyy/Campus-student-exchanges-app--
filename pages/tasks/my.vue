@@ -304,20 +304,36 @@ export default {
       });
     },
 
-    async changeStatus(item, status) {
-      const ok = await updateTaskStatus(item.id, status, this.profile.userId);
-      if (!ok) {
-        uni.showToast({
-          title: "操作失败",
-          icon: "none"
-        });
-        return;
-      }
-      uni.showToast({
-        title: `已更新为${this.getStatusText(status)}`,
-        icon: "success"
+    changeStatus(item, status) {
+      const statusText = this.getStatusText(status);
+      const confirmMap = {
+        cancelled: { title: "取消任务", content: `确定取消任务「${item.title}」吗？取消后不可恢复。` },
+        completed: { title: "完成任务", content: `确定将任务「${item.title}」标记为已完成吗？` }
+      };
+      const confirm = confirmMap[status] || { title: "操作确认", content: `确定将任务状态更新为${statusText}吗？` };
+
+      uni.showModal({
+        title: confirm.title,
+        content: confirm.content,
+        success: async (res) => {
+          if (!res.confirm) {
+            return;
+          }
+          const ok = await updateTaskStatus(item.id, status, this.profile.userId);
+          if (!ok) {
+            uni.showToast({
+              title: "操作失败",
+              icon: "none"
+            });
+            return;
+          }
+          uni.showToast({
+            title: `已更新为${statusText}`,
+            icon: "success"
+          });
+          this.loadMyTasks();
+        }
       });
-      this.loadMyTasks();
     }
   }
 };

@@ -10,7 +10,10 @@
         <text v-if="product.certified" class="chip cert">✓ 已认证</text>
       </view>
 
-      <view v-if="product.aiGenerated" class="ai-tag anim-pulse">AI 推荐</view>
+      <view v-if="product.status === 'sold'" class="sold-overlay">
+        <text class="sold-text">已售出</text>
+      </view>
+      <view v-if="product.aiGenerated && product.status !== 'sold'" class="ai-tag anim-pulse">AI 推荐</view>
     </view>
 
     <view class="content">
@@ -24,6 +27,11 @@
           <text v-if="product.originalPrice" class="original-price">¥{{ product.originalPrice }}</text>
         </view>
         <text class="views">{{ metricText }}</text>
+      </view>
+
+      <view class="location-row" v-if="product.location">
+        <text class="location-icon">📍</text>
+        <text class="location-text">{{ product.location }}</text>
       </view>
 
       <view class="bottom-row">
@@ -241,8 +249,24 @@ export default {
     font-size: 22rpx;
   }
 
+  .location-row {
+    margin-top: 10rpx;
+    display: flex;
+    align-items: center;
+    gap: 4rpx;
+  }
+
+  .location-icon {
+    font-size: 18rpx;
+  }
+
+  .location-text {
+    color: #8a95ac;
+    font-size: 21rpx;
+  }
+
   .bottom-row {
-    margin-top: 16rpx;
+    margin-top: 12rpx;
     padding-top: 14rpx;
     border-top: 1rpx solid #f0f3f9;
     display: flex;
@@ -282,6 +306,26 @@ export default {
   .time {
     font-size: 22rpx;
     color: #a0a8b8;
+  }
+
+  .sold-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+
+  .sold-text {
+    padding: 12rpx 32rpx;
+    border-radius: 12rpx;
+    background: rgba(255, 255, 255, 0.92);
+    color: #8a93a7;
+    font-size: 28rpx;
+    font-weight: 700;
+    letter-spacing: 2rpx;
   }
 
   .ai-tag {

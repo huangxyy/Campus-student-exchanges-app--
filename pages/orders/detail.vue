@@ -168,7 +168,7 @@ export default {
       return this.order && this.order.status === "completed" && !this.hasReviewed;
     },
     showCancelAction() {
-      return this.order && ["pending", "meet_confirmed", "paid_confirmed"].includes(this.order.status) && (this.isBuyer || this.isSeller);
+      return this.order && ["pending", "meet_confirmed"].includes(this.order.status) && (this.isBuyer || this.isSeller);
     },
     showAnyAction() {
       return this.showMeetConfirmAction || this.showPaidConfirmAction || this.showReceivedConfirmAction ||

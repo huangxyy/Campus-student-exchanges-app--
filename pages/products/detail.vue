@@ -36,7 +36,7 @@
         </view>
       </view>
 
-      <view class="seller card">
+      <view class="seller card" @tap="goSellerProfile">
         <image class="avatar" :src="sellerAvatar" mode="aspectFill" />
         <view class="seller-info">
           <view class="name-row">
@@ -47,6 +47,7 @@
           <view class="meta">信用分 {{ product.rating || 5.0 }} · 校内交易</view>
           <view class="seller-tags">
             <text class="ui-chip ui-chip-success">当面交易更安全</text>
+            <text class="ui-chip ui-chip-muted">点击查看主页 ›</text>
           </view>
         </view>
       </view>
@@ -55,8 +56,14 @@
         <button :class="['ui-btn', favorited ? 'ui-btn-secondary active-btn' : 'ui-btn-ghost']" @tap="collect">
           {{ favorited ? "已收藏" : "收藏" }}
         </button>
-        <button class="ui-btn ui-btn-ghost" @tap="contact">联系卖家</button>
-        <button v-if="!isOwner" class="ui-btn ui-btn-primary" :loading="ordering" @tap="buyNow">立即购买</button>
+        <button class="ui-btn ui-btn-ghost" @tap="reportProduct">举报</button>
+        <template v-if="product.status === 'available'">
+          <button class="ui-btn ui-btn-secondary" @tap="contact">联系卖家</button>
+          <button class="ui-btn ui-btn-primary" @tap="buyNow">立即下单</button>
+        </template>
+        <template v-else>
+          <button class="ui-btn ui-btn-muted" disabled>{{ productStatusText }}</button>
+        </template>
       </view>
     </template>
 
@@ -78,6 +85,8 @@ import { useUserStore } from "@/store/user";
 import { createOrGetConversationByProduct } from "@/utils/chat-service";
 import { isProductFavorited, toggleFavorite } from "@/utils/favorite-service";
 import { createOrder } from "@/utils/order-service";
+import { submitReport, REPORT_REASONS } from "@/utils/report-service";
+import { addPoints } from "@/utils/points-service";
 
 export default {
   components: {
@@ -90,8 +99,7 @@ export default {
       loading: false,
       product: null,
       favorited: false,
-      descExpanded: false,
-      ordering: false
+      descExpanded: false
     };
   },
 
@@ -102,11 +110,6 @@ export default {
 
     isLogin() {
       return this.userStore.isLogin;
-    },
-
-    isOwner() {
-      const myId = this.userStore.profile?.userId || "";
-      return !!myId && !!this.product && this.product.userId === myId;
     },
 
     imageList() {
@@ -140,6 +143,15 @@ export default {
         return this.descriptionText;
       }
       return `${this.descriptionText.slice(0, 80)}...`;
+    },
+
+    productStatusText() {
+      const statusMap = {
+        sold: "已售出",
+        reserved: "已预留",
+        unavailable: "已下架"
+      };
+      return statusMap[this.product?.status] || "不可购买";
     }
   },
 
@@ -243,22 +255,25 @@ export default {
         return;
       }
 
-      if (this.isOwner) {
-        uni.showToast({ title: "不能购买自己的商品", icon: "none" });
+      if (this.product.userId === profile.userId) {
+        uni.showToast({ title: "不能购买自己发布的商品", icon: "none" });
         return;
       }
 
       if (this.product.status !== "available") {
-        uni.showToast({ title: "商品已下架或已售出", icon: "none" });
+        uni.showToast({ title: "该商品已下架或已售出", icon: "none" });
         return;
       }
 
       uni.showModal({
-        title: "确认购买",
-        content: `确定购买「${this.product.title}」，价格 ¥${this.product.price}？`,
+        title: "确认下单",
+        content: `确认购买「${this.product.title}」？价格 ¥${this.product.price}。下单后请与卖家约定面交时间。`,
+        confirmText: "确认下单",
         success: async (res) => {
-          if (!res.confirm) { return; }
-          this.ordering = true;
+          if (!res.confirm) {
+            return;
+          }
+
           try {
             const order = await createOrder({
               productId: this.product._id,
@@ -267,21 +282,62 @@ export default {
               sellerId: this.product.userId,
               sellerName: this.product.userName || "卖家"
             });
+
             uni.showToast({ title: "下单成功", icon: "success" });
             setTimeout(() => {
               uni.navigateTo({ url: `/pages/orders/detail?id=${order.id}` });
-            }, 500);
+            }, 800);
           } catch (error) {
-            uni.showToast({ title: error?.message || "下单失败", icon: "none" });
-          } finally {
-            this.ordering = false;
+            uni.showToast({ title: error?.message || "下单失败，请重试", icon: "none" });
           }
         }
       });
     },
 
+    reportProduct() {
+      if (!this.isLogin) {
+        uni.navigateTo({ url: "/pages/login/login" });
+        return;
+      }
+
+      if (!this.product?._id) {
+        return;
+      }
+
+      const labels = REPORT_REASONS.map((r) => r.label);
+      uni.showActionSheet({
+        itemList: labels,
+        success: async (res) => {
+          const selected = REPORT_REASONS[res.tapIndex];
+          if (!selected) {
+            return;
+          }
+
+          try {
+            await submitReport({
+              targetType: "product",
+              targetId: this.product._id,
+              reason: selected.value,
+              detail: `举报商品: ${this.product.title}`
+            });
+            uni.showToast({ title: "举报已提交，感谢反馈", icon: "success" });
+          } catch (error) {
+            uni.showToast({ title: error?.message || "举报失败", icon: "none" });
+          }
+        }
+      });
+    },
+
+    goSellerProfile() {
+      if (!this.product?.userId) {
+        return;
+      }
+      uni.navigateTo({
+        url: `/pages/profile/user?id=${this.product.userId}`
+      });
+    },
+
     goBackToList() {
-      // 使用 navigateBack 防止页面栈溢出，如果无法返回则 switchTab 到首页
       const pages = getCurrentPages();
       if (pages.length > 1) {
         uni.navigateBack();
