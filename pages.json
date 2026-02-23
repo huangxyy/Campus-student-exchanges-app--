@@ -125,7 +125,8 @@
     {
       "path": "pages/profile/my-orders",
       "style": {
-        "navigationBarTitleText": "我的订单"
+        "navigationBarTitleText": "我的订单",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -162,7 +163,8 @@
     {
       "path": "pages/points/ranking",
       "style": {
-        "navigationBarTitleText": "积分排行榜"
+        "navigationBarTitleText": "积分排行榜",
+        "enablePullDownRefresh": true
       }
     },
     {

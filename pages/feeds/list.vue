@@ -1,22 +1,35 @@
 <template>
   <view class="feeds-page">
-    <view class="banner card anim-slide-down">
-      <view class="banner-top">
-        <view>
-          <view class="banner-title">校园动态</view>
-          <view class="banner-desc">分享校园生活，发现身边趣事</view>
-        </view>
-        <button class="publish-btn btn-bounce" size="mini" @tap="goPublish">发动态</button>
-      </view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+      <view class="orb orb-2 anim-float-x"></view>
     </view>
 
-    <view class="topic-row anim-fade-in anim-d1">
-      <text
-        v-for="t in topics"
-        :key="t"
-        :class="['topic-tag', currentTopic === t ? 'active' : '']"
-        @tap="currentTopic = t"
-      >{{ t }}</text>
+    <view class="header glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="header-deco"></view>
+      <view class="header-top">
+        <view>
+          <view class="header-title">📢 校园动态</view>
+          <view class="header-desc">分享校园生活，发现身边趣事</view>
+        </view>
+        <button class="publish-btn btn-bounce" @tap="goPublish">
+          <text class="btn-icon">＋</text>
+          <text>发布</text>
+        </button>
+      </view>
+
+      <scroll-view scroll-x class="topic-scroll" :show-scrollbar="false">
+        <view class="topic-row">
+          <view
+            v-for="t in topics"
+            :key="t"
+            :class="['topic-tag', currentTopic === t ? 'active' : '']"
+            @tap="currentTopic = t"
+          >
+            {{ t }}
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
     <empty-state
@@ -30,61 +43,82 @@
     <view
       v-for="(item, idx) in list"
       :key="item.id"
-      :class="['feed-card', 'card', 'card-press', 'anim-slide-up', idx < 6 ? ('anim-d' + (idx + 1)) : '']"
+      :class="['feed-card', 'card-press', 'anim-slide-up', idx < 10 ? ('anim-d' + (idx + 1)) : '']"
       @tap="goDetail(item.id)"
     >
-      <view class="feed-author">
-        <image v-if="item.authorAvatar" :src="item.authorAvatar" class="avatar" mode="aspectFill" />
+      <view class="feed-header">
+        <view class="avatar-ring" v-if="item.authorAvatar">
+          <image :src="item.authorAvatar" class="avatar" mode="aspectFill" />
+        </view>
         <view v-else class="avatar-placeholder">{{ (item.authorName || '?')[0] }}</view>
         <view class="author-info">
-          <text class="author-name">{{ item.authorName }}</text>
+          <view class="name-row">
+            <text class="author-name">{{ item.authorName }}</text>
+            <text v-if="item.topic" class="topic-chip">{{ item.topic }}</text>
+          </view>
           <text class="feed-time">{{ formatTime(item.createdAt) }}</text>
         </view>
-        <text v-if="item.topic" class="topic-chip">{{ item.topic }}</text>
       </view>
+      
       <view class="feed-content">{{ item.content }}</view>
-      <view v-if="item.images && item.images.length > 0" class="feed-images">
-        <image
+      
+      <view v-if="item.images && item.images.length > 0" :class="['feed-images', `image-count-${Math.min(item.images.length, 3)}`]">
+        <view
           v-for="(img, imgIdx) in item.images.slice(0, 3)"
           :key="imgIdx"
-          :src="img"
-          class="feed-img"
-          mode="aspectFill"
+          class="image-wrapper img-zoom-wrap"
           @tap.stop="previewImage(item.images, imgIdx)"
-        />
-        <view v-if="item.images.length > 3" class="more-images">+{{ item.images.length - 3 }}</view>
+        >
+          <image :src="img" class="feed-img" mode="aspectFill" />
+          <view v-if="imgIdx === 2 && item.images.length > 3" class="more-images-overlay glass-dark">
+            <text>+{{ item.images.length - 3 }}</text>
+          </view>
+        </view>
       </view>
-      <view class="feed-actions">
-        <view :class="['action-item', isLiked(item) ? 'liked' : '']" @tap.stop="handleLike(item)">
-          <text class="action-icon">{{ isLiked(item) ? '❤️' : '🤍' }}</text>
-          <text class="action-count">{{ item.likeCount || 0 }}</text>
+      
+      <view class="feed-footer">
+        <view class="action-group">
+          <view :class="['action-btn', isLiked(item) ? 'liked' : '']" @tap.stop="handleLike(item)">
+            <text class="action-icon">{{ isLiked(item) ? '❤️' : '🤍' }}</text>
+            <text class="action-text" v-if="item.likeCount">{{ item.likeCount }}</text>
+            <text class="action-text" v-else>赞</text>
+          </view>
+          <view class="action-btn" @tap.stop="goDetail(item.id)">
+            <text class="action-icon">💬</text>
+            <text class="action-text" v-if="item.commentCount">{{ item.commentCount }}</text>
+            <text class="action-text" v-else>评论</text>
+          </view>
         </view>
-        <view class="action-item" @tap.stop="goDetail(item.id)">
-          <text class="action-icon">💬</text>
-          <text class="action-count">{{ item.commentCount || 0 }}</text>
-        </view>
-        <view v-if="isOwn(item)" class="action-item danger" @tap.stop="handleDelete(item)">
-          <text class="action-icon">🗑️</text>
-        </view>
-        <view v-else class="action-item" @tap.stop="handleReport(item)">
-          <text class="action-icon">⚠️</text>
+        
+        <view class="action-group">
+          <view v-if="isOwn(item)" class="action-btn icon-only" @tap.stop="handleDelete(item)">
+            <text class="action-icon">🗑️</text>
+          </view>
+          <view v-else class="action-btn icon-only" @tap.stop="handleReport(item)">
+            <text class="action-icon">⚠️</text>
+          </view>
         </view>
       </view>
     </view>
 
-    <view v-if="loading" class="loading-text">加载中...</view>
+    <view v-if="loading" class="loading-state">
+      <view class="loading-spinner"></view>
+      <text>加载中...</text>
+    </view>
+    
+    <report-dialog ref="reportDialog" />
   </view>
 </template>
 
 <script>
 import EmptyState from "@/components/empty-state/empty-state.vue";
+import ReportDialog from "@/components/report-dialog/report-dialog.vue";
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { listFeeds, toggleLike, deleteFeed } from "@/utils/feed-service";
-import { submitReport, REPORT_REASONS } from "@/utils/report-service";
 
 export default {
-  components: { EmptyState },
+  components: { EmptyState, ReportDialog },
 
   data() {
     return {
@@ -148,9 +182,21 @@ export default {
         uni.navigateTo({ url: "/pages/login/login" });
         return;
       }
-      const result = await toggleLike(item.id);
-      if (result !== null) {
-        this.loadList();
+      const idx = this.list.findIndex((f) => f.id === item.id);
+      if (idx < 0) { return; }
+      const feed = this.list[idx];
+      const wasLiked = feed.likedBy && feed.likedBy.includes(this.myUserId);
+      const updated = {
+        ...feed,
+        likedBy: wasLiked
+          ? (feed.likedBy || []).filter((id) => id !== this.myUserId)
+          : [...(feed.likedBy || []), this.myUserId],
+        likeCount: Math.max(0, (feed.likeCount || 0) + (wasLiked ? -1 : 1))
+      };
+      this.list = [...this.list.slice(0, idx), updated, ...this.list.slice(idx + 1)];
+      const result = await toggleLike(item.id).catch(() => null);
+      if (result === null) {
+        this.list = [...this.list.slice(0, idx), feed, ...this.list.slice(idx + 1)];
       }
     },
 
@@ -174,19 +220,7 @@ export default {
         uni.navigateTo({ url: "/pages/login/login" });
         return;
       }
-      uni.showActionSheet({
-        itemList: REPORT_REASONS.map((r) => r.label),
-        success: async (res) => {
-          const reason = REPORT_REASONS[res.tapIndex];
-          if (!reason) { return; }
-          await submitReport({
-            targetType: "feed",
-            targetId: item.id,
-            reason: reason.value
-          }).catch(() => null);
-          uni.showToast({ title: "举报已提交", icon: "none" });
-        }
-      });
+      this.$refs.reportDialog.open("feed", item.id);
     }
   }
 };
@@ -194,45 +228,296 @@ export default {
 
 <style lang="scss" scoped>
 .feeds-page {
-  padding: 24rpx; padding-bottom: 120rpx;
-  background: radial-gradient(circle at 12% 8%, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0)),
-    radial-gradient(circle at 88% 20%, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0)), #f5f7fc;
+  position: relative;
+  padding: 24rpx;
+  padding-bottom: 120rpx;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
 }
-.banner { padding: 26rpx; background: linear-gradient(140deg, rgba(243, 238, 255, 0.96), rgba(250, 248, 255, 0.98)), #ffffff; border: 1rpx solid #e6dff8; }
-.banner-top { display: flex; align-items: flex-start; justify-content: space-between; }
-.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 700; }
-.banner-desc { margin-top: 8rpx; color: #647188; font-size: 24rpx; }
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.45;
+}
+.orb-1 {
+  width: 200rpx; height: 200rpx;
+  top: -30rpx; right: -40rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.28), transparent 70%);
+}
+.orb-2 {
+  width: 150rpx; height: 150rpx;
+  top: 400rpx; left: -30rpx;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.2), transparent 70%);
+}
+
+/* Header */
+.header {
+  position: relative;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.header-deco {
+  position: absolute;
+  top: -60rpx; right: -40rpx;
+  width: 200rpx; height: 200rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.08), transparent);
+  pointer-events: none;
+}
+
+.header-top {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.header-title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1a2540;
+}
+
+.header-desc {
+  margin-top: 8rpx;
+  color: #5a6a88;
+  font-size: 24rpx;
+  letter-spacing: 0.5rpx;
+}
+
 .publish-btn {
-  margin: 0; height: 58rpx; line-height: 58rpx; border-radius: 32rpx; border: none;
-  background: linear-gradient(135deg, #7c3aed, #6025c0); color: #fff; font-size: 22rpx; padding: 0 24rpx;
+  margin: 0;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 0 28rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 600;
+  box-shadow: 0 6rpx 18rpx rgba(47, 107, 255, 0.3);
+  border: none;
+  flex-shrink: 0;
 }
 .publish-btn::after { border: none; }
-.topic-row { margin: 16rpx 4rpx 10rpx; display: flex; flex-wrap: wrap; gap: 10rpx; }
-.topic-tag { padding: 10rpx 20rpx; border-radius: 999rpx; background: #eef2fb; color: #68748d; font-size: 22rpx; }
-.topic-tag.active { background: #7c3aed; color: #fff; }
-.feed-card { margin-bottom: 12rpx; padding: 20rpx; }
-.feed-author { display: flex; align-items: center; gap: 12rpx; }
-.avatar { width: 64rpx; height: 64rpx; border-radius: 50%; flex-shrink: 0; }
+.btn-icon { font-size: 28rpx; font-weight: bold; }
+
+/* Topic Scroll */
+.topic-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+.topic-row {
+  display: flex;
+  gap: 14rpx;
+  padding-right: 20rpx;
+}
+.topic-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 30rpx;
+  background: rgba(255, 255, 255, 0.7);
+  color: #6a7e9a;
+  font-size: 24rpx;
+  font-weight: 600;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
+  transition: all 0.25s ease;
+}
+.topic-tag.active {
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 6rpx 16rpx rgba(47, 107, 255, 0.25);
+  transform: translateY(-2rpx);
+}
+
+/* Feed Card */
+.feed-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border-radius: $radius-lg;
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
+  padding: 28rpx;
+  margin-bottom: 18rpx;
+  box-shadow: $shadow-card;
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-bottom: 18rpx;
+}
+
+.avatar-ring {
+  width: 80rpx; height: 80rpx;
+  border-radius: 50%;
+  padding: 3rpx;
+  background: linear-gradient(135deg, #2f6bff, #13c2a3);
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 12rpx rgba(47, 107, 255, 0.18);
+}
+.avatar {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  border: 3rpx solid #fff;
+  display: block;
+}
 .avatar-placeholder {
-  width: 64rpx; height: 64rpx; border-radius: 50%; background: #e8e0f8; color: #7c3aed;
-  display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 700; flex-shrink: 0;
+  width: 80rpx; height: 80rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8efff, #dfe9ff);
+  color: #4b62a8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  flex-shrink: 0;
 }
-.author-info { flex: 1; min-width: 0; }
-.author-name { display: block; color: #1f2430; font-size: 26rpx; font-weight: 600; }
-.feed-time { display: block; color: #8a93a7; font-size: 20rpx; margin-top: 2rpx; }
-.topic-chip { background: #f0e8ff; color: #7b5ec6; border-radius: 999rpx; padding: 4rpx 14rpx; font-size: 20rpx; flex-shrink: 0; }
-.feed-content { margin-top: 14rpx; color: #2b3345; font-size: 26rpx; line-height: 1.65; }
-.feed-images { margin-top: 12rpx; display: flex; gap: 8rpx; flex-wrap: wrap; }
-.feed-img { width: 200rpx; height: 200rpx; border-radius: 12rpx; }
-.more-images {
-  width: 200rpx; height: 200rpx; border-radius: 12rpx; background: #f0f2f8;
-  display: flex; align-items: center; justify-content: center; color: #6e7b92; font-size: 28rpx;
+
+.author-info { flex: 1; }
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
-.feed-actions { margin-top: 14rpx; display: flex; align-items: center; gap: 28rpx; }
-.action-item { display: flex; align-items: center; gap: 6rpx; }
-.action-item.liked .action-count { color: #e74a62; }
-.action-item.danger .action-icon { opacity: 0.6; }
+.author-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1a2540;
+}
+.topic-chip {
+  height: 36rpx;
+  line-height: 36rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(47, 107, 255, 0.08);
+  color: #4a78d4;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+.feed-time {
+  font-size: 22rpx;
+  color: #8a95ac;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.feed-content {
+  font-size: 28rpx;
+  color: #2b3a56;
+  line-height: 1.65;
+  margin-bottom: 18rpx;
+  word-break: break-all;
+}
+
+/* Feed Images */
+.feed-images {
+  display: flex;
+  gap: 10rpx;
+  margin-bottom: 18rpx;
+}
+.image-wrapper {
+  position: relative;
+  border-radius: 18rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(26, 38, 66, 0.06);
+}
+.image-count-1 .image-wrapper { width: 100%; height: 360rpx; }
+.image-count-2 .image-wrapper { width: calc(50% - 5rpx); height: 260rpx; }
+.image-count-3 .image-wrapper { width: calc(33.333% - 7rpx); height: 200rpx; }
+.feed-img { width: 100%; height: 100%; background-color: #eef2fb; }
+
+.more-images-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+/* Footer Actions */
+.feed-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(228, 235, 251, 0.5);
+}
+.action-group {
+  display: flex;
+  gap: 14rpx;
+}
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(238, 242, 251, 0.6);
+  transition: all 0.2s ease;
+}
+.action-btn:active {
+  background: rgba(228, 235, 251, 0.9);
+  transform: scale(0.95);
+}
+.action-btn.icon-only {
+  padding: 10rpx 14rpx;
+}
+.action-btn.liked {
+  background: rgba(255, 215, 220, 0.5);
+}
+.action-btn.liked .action-text {
+  color: #e25269;
+  font-weight: 700;
+}
 .action-icon { font-size: 28rpx; }
-.action-count { color: #8a93a7; font-size: 22rpx; }
-.loading-text { margin-top: 40rpx; text-align: center; color: #8b95ab; font-size: 24rpx; }
+.action-text {
+  font-size: 23rpx;
+  font-weight: 600;
+  color: #6a7e9a;
+}
+
+/* Loading */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 40rpx;
+  gap: 16rpx;
+  color: #8a95ac;
+  font-size: 24rpx;
+}
+.loading-spinner {
+  width: 44rpx; height: 44rpx;
+  border: 4rpx solid #e0e8f8;
+  border-top-color: #2f6bff;
+  border-radius: 50%;
+  animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

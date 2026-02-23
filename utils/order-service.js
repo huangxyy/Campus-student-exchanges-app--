@@ -1,6 +1,6 @@
 import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
-import { showError, withGuard } from "@/utils/error-handler";
+
 import { sanitizeText } from "@/utils/sanitize";
 import { addPoints } from "@/utils/points-service";
 import { recordOrderCompletion } from "@/utils/trust-service";
@@ -421,6 +421,13 @@ export async function submitReview(payload) {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User is not logged in");
+  }
+
+  if (payload.orderId) {
+    const order = await getOrder(payload.orderId).catch(() => null);
+    if (order && order.status !== "completed") {
+      throw new Error("订单尚未完成，无法评价");
+    }
   }
 
   const profile = getCurrentProfile();

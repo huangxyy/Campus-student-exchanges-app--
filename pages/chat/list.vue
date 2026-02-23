@@ -57,8 +57,8 @@
             'chat-item',
             'card',
             'card-press',
-            'anim-slide-up',
-            idx < 8 ? ('anim-d' + (idx + 1)) : ''
+            'anim-stagger-fade',
+            'anim-d' + (idx % 10 + 1)
           ]"
           @tap="openConversation(item)"
         >

@@ -3,6 +3,9 @@ import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 
 const WIKI_KEY = "cm_wiki_articles";
+const DEFAULT_PAGE_SIZE = 20;
+
+let _submitLock = false;
 
 function normalizeArticle(item = {}) {
   return {
@@ -20,16 +23,13 @@ function normalizeArticle(item = {}) {
   };
 }
 
-function readArticles() {
-  try {
-    return uni.getStorageSync(WIKI_KEY) || [];
-  } catch (error) {
-    return [];
-  }
+function readLocal(key) {
+  try { return uni.getStorageSync(key) || []; }
+  catch { return []; }
 }
-
-function saveArticles(list) {
-  uni.setStorageSync(WIKI_KEY, list);
+function saveLocal(key, list) {
+  try { uni.setStorageSync(key, list); }
+  catch { /* noop */ }
 }
 
 function getWikiCollection() {
@@ -37,45 +37,42 @@ function getWikiCollection() {
   return db ? db.collection("wiki_articles") : null;
 }
 
-async function listArticlesFromCloud(category) {
+async function listArticlesFromCloud(category, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
   const collection = getWikiCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
-  const query = category
-    ? collection.where({ status: "approved", category })
-    : collection.where({ status: "approved" });
-
-  const res = await query.orderBy("createdAt", "desc").limit(100).get();
-  return (res.data || []).map((item) => normalizeArticle(item));
+  const where = category ? { status: "approved", category } : { status: "approved" };
+  const skip = (page - 1) * pageSize;
+  const res = await collection
+    .where(where)
+    .orderBy("createdAt", "desc")
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+  return (res.data || []).map(normalizeArticle);
 }
 
 async function getArticleFromCloud(articleId) {
   const collection = getWikiCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const res = await collection.doc(articleId).get().catch(() => null);
-  if (!res || !res.data) {
-    return null;
-  }
+  if (!res || !res.data) { return null; }
+
+  const article = normalizeArticle(res.data);
 
   const db = getCloudDatabase();
-  const _ = db.command;
   await collection.doc(articleId).update({
-    data: { viewCount: _.inc(1) }
+    data: { viewCount: db.command.inc(1) }
   }).catch(() => null);
 
-  return normalizeArticle(res.data);
+  article.viewCount += 1;
+  return article;
 }
 
 async function submitArticleToCloud(payload) {
   const collection = getWikiCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const now = Date.now();
   const data = {
@@ -97,79 +94,75 @@ async function submitArticleToCloud(payload) {
 
 // --- Exported API ---
 
-export async function listArticles(category) {
-  const cloudList = await listArticlesFromCloud(category).catch(() => null);
-  if (cloudList) {
-    return cloudList;
-  }
+export async function listArticles(category, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
+  const cloudList = await listArticlesFromCloud(category, page, pageSize).catch(() => null);
+  if (cloudList) { return cloudList; }
 
   await wait();
-  let list = readArticles().map((item) => normalizeArticle(item)).filter((item) => item.status === "approved");
-  if (category) {
-    list = list.filter((item) => item.category === category);
-  }
-  return list.sort((a, b) => b.createdAt - a.createdAt);
+  let list = readLocal(WIKI_KEY).map(normalizeArticle).filter((a) => a.status === "approved");
+  if (category) { list = list.filter((a) => a.category === category); }
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  const start = (page - 1) * pageSize;
+  return list.slice(start, start + pageSize);
 }
 
 export async function getArticle(articleId) {
-  if (!articleId) {
-    return null;
-  }
+  if (!articleId) { return null; }
 
   const cloudArticle = await getArticleFromCloud(articleId).catch(() => null);
-  if (cloudArticle) {
-    return cloudArticle;
-  }
+  if (cloudArticle) { return cloudArticle; }
 
   await wait(30);
-  const articles = readArticles().map((item) => normalizeArticle(item));
-  const found = articles.find((item) => item.id === articleId);
-  if (found) {
-    found.viewCount += 1;
-    saveArticles(articles);
-  }
-  return found || null;
+  const articles = readLocal(WIKI_KEY).map(normalizeArticle);
+  const found = articles.find((a) => a.id === articleId);
+  if (!found) { return null; }
+
+  const updated = articles.map((a) =>
+    a.id === articleId ? { ...a, viewCount: a.viewCount + 1 } : a
+  );
+  saveLocal(WIKI_KEY, updated);
+  return { ...found, viewCount: found.viewCount + 1 };
 }
 
 export async function submitArticle(payload) {
   const userId = getCurrentUserId();
-  if (!userId) {
-    throw new Error("User is not logged in");
+  if (!userId) { throw new Error("User is not logged in"); }
+  if (_submitLock) { throw new Error("Submit in progress"); }
+
+  _submitLock = true;
+  try {
+    const profile = getCurrentProfile();
+    const fullPayload = {
+      ...payload,
+      authorId: userId,
+      authorName: profile.nickName || "校园用户",
+      title: sanitizeText(payload.title, { maxLength: 60 }),
+      content: sanitizeText(payload.content, { maxLength: 5000 }),
+      summary: sanitizeText(payload.summary || "", { maxLength: 200 }),
+    };
+
+    const cloudArticle = await submitArticleToCloud(fullPayload).catch(() => null);
+    if (cloudArticle) { return cloudArticle; }
+
+    const article = normalizeArticle({
+      ...fullPayload,
+      id: generateId("wiki"),
+      status: "pending",
+      createdAt: Date.now()
+    });
+    const list = readLocal(WIKI_KEY);
+    list.unshift(article);
+    saveLocal(WIKI_KEY, list);
+    await wait();
+    return article;
+  } finally {
+    _submitLock = false;
   }
-
-  const profile = getCurrentProfile();
-  const fullPayload = {
-    ...payload,
-    authorId: userId,
-    authorName: profile.nickName || "校园用户",
-    title: sanitizeText(payload.title, { maxLength: 60 }),
-    content: sanitizeText(payload.content, { maxLength: 5000 }),
-    summary: sanitizeText(payload.summary || "", { maxLength: 200 }),
-  };
-
-  const cloudArticle = await submitArticleToCloud(fullPayload).catch(() => null);
-  if (cloudArticle) {
-    return cloudArticle;
-  }
-
-  const article = normalizeArticle({
-    ...fullPayload,
-    id: generateId("wiki"),
-    status: "pending",
-    createdAt: Date.now()
-  });
-  const list = readArticles();
-  list.unshift(article);
-  saveArticles(list);
-  await wait();
-  return article;
 }
 
 export async function getMySubmissions() {
   const userId = getCurrentUserId();
-  if (!userId) {
-    return [];
-  }
+  if (!userId) { return []; }
 
   const collection = getWikiCollection();
   if (collection) {
@@ -181,22 +174,18 @@ export async function getMySubmissions() {
       .catch(() => null);
 
     if (res && res.data) {
-      return res.data.map((item) => normalizeArticle(item));
+      return res.data.map(normalizeArticle);
     }
   }
 
   await wait(30);
-  return readArticles()
-    .map((item) => normalizeArticle(item))
-    .filter((item) => item.authorId === userId)
+  return readLocal(WIKI_KEY)
+    .map(normalizeArticle)
+    .filter((a) => a.authorId === userId)
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function getStatusText(status) {
-  const map = {
-    pending: "待审核",
-    approved: "已通过",
-    rejected: "已驳回"
-  };
+  const map = { pending: "待审核", approved: "已通过", rejected: "已驳回" };
   return map[status] || "未知";
 }

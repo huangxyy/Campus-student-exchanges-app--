@@ -3,6 +3,7 @@ import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 
 const REPORTS_KEY = "cm_reports";
+const REPORT_DEDUP_KEY = "cm_report_dedup";
 
 function normalizeReport(item = {}) {
   return {
@@ -22,11 +23,29 @@ function getReportCollection() {
   return db ? db.collection("reports") : null;
 }
 
+function hasDuplicateReport(userId, targetType, targetId) {
+  try {
+    const dedupMap = uni.getStorageSync(REPORT_DEDUP_KEY) || {};
+    const key = `${userId}:${targetType}:${targetId}`;
+    return !!dedupMap[key];
+  } catch {
+    return false;
+  }
+}
+
+function markReported(userId, targetType, targetId) {
+  try {
+    const dedupMap = uni.getStorageSync(REPORT_DEDUP_KEY) || {};
+    dedupMap[`${userId}:${targetType}:${targetId}`] = Date.now();
+    uni.setStorageSync(REPORT_DEDUP_KEY, dedupMap);
+  } catch {
+    /* noop */
+  }
+}
+
 async function submitReportToCloud(payload) {
   const collection = getReportCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const now = Date.now();
   const data = {
@@ -45,9 +64,7 @@ async function submitReportToCloud(payload) {
 
 export async function submitReport(payload) {
   const userId = getCurrentUserId();
-  if (!userId) {
-    throw new Error("User is not logged in");
-  }
+  if (!userId) { throw new Error("User is not logged in"); }
 
   const fullPayload = {
     ...payload,
@@ -59,8 +76,13 @@ export async function submitReport(payload) {
     throw new Error("Missing required report fields");
   }
 
+  if (hasDuplicateReport(userId, fullPayload.targetType, fullPayload.targetId)) {
+    throw new Error("您已举报过该内容，请勿重复提交");
+  }
+
   const cloudReport = await submitReportToCloud(fullPayload).catch(() => null);
   if (cloudReport) {
+    markReported(userId, fullPayload.targetType, fullPayload.targetId);
     return cloudReport;
   }
 
@@ -74,10 +96,11 @@ export async function submitReport(payload) {
     const all = uni.getStorageSync(REPORTS_KEY) || [];
     all.push(report);
     uni.setStorageSync(REPORTS_KEY, all);
-  } catch (error) {
-    // ignore
+  } catch {
+    /* noop */
   }
 
+  markReported(userId, fullPayload.targetType, fullPayload.targetId);
   await wait();
   return report;
 }

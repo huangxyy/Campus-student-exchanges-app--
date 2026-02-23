@@ -1,5 +1,5 @@
 import { getCloudDatabase } from "@/utils/cloud";
-import { showError, withGuard } from "@/utils/error-handler";
+
 import { generateId } from "@/utils/common";
 import { sanitizeText } from "@/utils/sanitize";
 import { addPoints } from "@/utils/points-service";
@@ -73,7 +73,7 @@ function normalizeTask(task = {}) {
     description: task.description || "",
     publisher: task.publisher || "校园用户",
     publisherId: task.publisherId || "",
-    status: task.status || "open",
+    status: task.status || "open", // open/assigned/picked_up/delivered/completed/cancelled
     assignedUser: task.assignedUser || "",
     assignedUserId: task.assignedUserId || "",
     deadlineAt: task.deadlineAt || null,
@@ -86,6 +86,9 @@ function normalizeTask(task = {}) {
     deliveredAt: task.deliveredAt || null,
     completedAt: task.completedAt || null,
     cancelledAt: task.cancelledAt || null,
+    confirmProofImage: task.confirmProofImage || "",
+    confirmByAssigneeAt: task.confirmByAssigneeAt || null,
+    confirmByPublisherAt: task.confirmByPublisherAt || null,
     createdAt: task.createdAt || Date.now(),
     updatedAt: task.updatedAt || task.createdAt || Date.now()
   };
@@ -127,17 +130,20 @@ function getTaskCollection() {
   return db.collection("tasks");
 }
 
-function isTaskStatusTransitionAllowed(currentStatus, nextStatus) {
-  const transitions = {
-    open: ["assigned", "cancelled"],
-    assigned: ["picked_up", "completed", "cancelled"],
-    picked_up: ["delivered", "cancelled"],
-    delivered: ["completed", "cancelled"],
-    completed: [],
-    cancelled: []
-  };
-  const allowed = transitions[currentStatus] || [];
-  return allowed.includes(nextStatus);
+function isTaskStatusTransitionAllowed(current, next) {
+  if (current === "open") {
+    return ["assigned", "cancelled"].includes(next);
+  }
+  if (current === "assigned") {
+    return ["picked_up", "delivered", "completed", "cancelled"].includes(next);
+  }
+  if (current === "picked_up") {
+    return ["delivered", "cancelled"].includes(next);
+  }
+  if (current === "delivered") {
+    return ["completed"].includes(next);
+  }
+  return false;
 }
 
 function canOperateTask(task, operatorUserId, nextStatus) {
@@ -154,10 +160,10 @@ function canOperateTask(task, operatorUserId, nextStatus) {
   }
 
   if (nextStatus === "completed") {
-    return task.publisherId === operatorUserId;
+    return task.publisherId === operatorUserId || task.assignedUserId === operatorUserId;
   }
 
-  return task.publisherId === operatorUserId || task.assignedUserId === operatorUserId;
+  return false;
 }
 
 function buildTaskUserStats(publishedList = [], acceptedList = []) {

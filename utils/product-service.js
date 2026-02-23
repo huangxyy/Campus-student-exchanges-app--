@@ -1,4 +1,4 @@
-﻿import { mockProducts } from "@/utils/mock-products";
+import { mockProducts } from "@/utils/mock-products";
 import { getCloudDatabase, isCloudReady } from "@/utils/cloud";
 import { generateId as generateUniqueId, getCurrentUserId, createRateLimiter } from "@/utils/common";
 import { sanitizeText, sanitizeNumber } from "@/utils/sanitize";
@@ -600,6 +600,20 @@ async function updateProductStatusInCloud(productId, status, userId) {
   return true;
 }
 
+const PRODUCT_STATUS_TRANSITIONS = {
+  available: ["sold", "reserved", "unavailable", "deleted"],
+  reserved: ["available", "sold", "deleted"],
+  sold: ["deleted"],
+  unavailable: ["available", "deleted"],
+  deleted: ["available"]
+};
+
+function isProductTransitionAllowed(from, to) {
+  if (!from) { return true; }
+  const allowed = PRODUCT_STATUS_TRANSITIONS[from] || [];
+  return allowed.includes(to);
+}
+
 export async function updateProductStatus(productId, status) {
   if (!productId || !status) {
     return false;
@@ -610,10 +624,13 @@ export async function updateProductStatus(productId, status) {
     return false;
   }
 
-  // 本地所有权校验
   const product = getAllProducts().find((p) => p._id === productId);
   if (product && product.userId && product.userId !== userId) {
     console.warn("[ProductService] updateProductStatus: permission denied");
+    return false;
+  }
+  if (product && !isProductTransitionAllowed(product.status, status)) {
+    console.warn("[ProductService] updateProductStatus: transition not allowed", product.status, "->", status);
     return false;
   }
 
@@ -733,9 +750,9 @@ export async function increaseProductViews(productId) {
   }));
 
   if (!localUpdated) {
-    const mockItem = mockProducts.find((item) => item._id === productId);
-    if (mockItem) {
-      mockItem.views = Number(mockItem.views || 0) + 1;
+    const mockIdx = mockProducts.findIndex((item) => item._id === productId);
+    if (mockIdx >= 0) {
+      mockProducts[mockIdx] = { ...mockProducts[mockIdx], views: Number(mockProducts[mockIdx].views || 0) + 1 };
     }
   }
 }

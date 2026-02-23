@@ -73,7 +73,10 @@ export default {
     async loadList() {
       this.loading = true;
       try {
-        this.list = await getMyWants().catch(() => []);
+        this.list = await getMyWants();
+      } catch (error) {
+        this.list = [];
+        uni.showToast({ title: "加载失败", icon: "none" });
       } finally {
         this.loading = false;
       }

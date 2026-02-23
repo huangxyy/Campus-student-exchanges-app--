@@ -89,6 +89,10 @@ async function upsertScoreInCloud(userId, record) {
 
   if (existing) {
     const docRes = await collection.where({ userId }).limit(1).get();
+    if (!docRes.data || !docRes.data[0]) {
+      await collection.add({ data });
+      return normalizeTrustRecord(data);
+    }
     const docId = docRes.data[0]._id || docRes.data[0].id;
     await collection.doc(docId).update({ data });
   } else {

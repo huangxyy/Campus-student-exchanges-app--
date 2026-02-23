@@ -1,5 +1,6 @@
 import { isCloudReady } from "@/utils/cloud";
 import { generateId } from "@/utils/common";
+import { withTimeout } from "@/utils/error-handler";
 
 const USER_KEY = "cm_user";
 const TOKEN_KEY = "cm_token";
@@ -63,14 +64,17 @@ async function cloudLoginWithProfile(profile = {}) {
   }
 
   const oldUser = getStoredUser();
-  const callRes = await wx.cloud
-    .callFunction({
-      name: "login",
-      data: {
-        userInfo: profile
-      }
-    })
-    .catch(() => null);
+  const loginPromise = wx.cloud.callFunction({
+    name: "login",
+    data: {
+      userInfo: profile
+    }
+  });
+
+  const callRes = await withTimeout(loginPromise, 3000).catch((error) => {
+    console.warn("[Auth] cloudLoginWithProfile failed or timeout:", error);
+    return null;
+  });
 
   const result = callRes?.result;
   if (!result || result.code !== 0) {

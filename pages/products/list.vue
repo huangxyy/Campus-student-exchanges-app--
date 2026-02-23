@@ -107,9 +107,10 @@
 
     <view v-if="list.length > 0">
       <product-card
-        v-for="item in list"
+        v-for="(item, index) in list"
         :key="item._id"
         :product="item"
+        :class="['anim-stagger-fade', 'anim-d' + (index % 10 + 1)]"
         @click="goDetail(item._id)"
       />
 

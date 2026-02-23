@@ -3,6 +3,7 @@ import { getCloudDatabase } from "@/utils/cloud";
 
 const LEDGER_KEY = "cm_points_ledger";
 const CHECKIN_KEY = "cm_checkin_record";
+const DEDUP_KEY = "cm_points_dedup";
 
 function normalizeLedgerEntry(item = {}) {
   return {
@@ -16,47 +17,71 @@ function normalizeLedgerEntry(item = {}) {
   };
 }
 
+function readLocal(key, fallback) {
+  try { return uni.getStorageSync(key) || fallback; }
+  catch { return fallback; }
+}
+function saveLocal(key, value) {
+  try { uni.setStorageSync(key, value); }
+  catch { /* noop */ }
+}
+
 function readLedger(userId) {
-  try {
-    const all = uni.getStorageSync(LEDGER_KEY) || [];
-    return all.filter((item) => item.userId === userId);
-  } catch (error) {
-    return [];
-  }
+  return readLocal(LEDGER_KEY, []).filter((item) => item.userId === userId);
 }
 
 function saveLedgerEntry(entry) {
-  try {
-    const all = uni.getStorageSync(LEDGER_KEY) || [];
-    all.push(entry);
-    uni.setStorageSync(LEDGER_KEY, all);
-  } catch (error) {
-    // ignore
-  }
+  const all = readLocal(LEDGER_KEY, []);
+  all.push(entry);
+  saveLocal(LEDGER_KEY, all);
+}
+
+function formatDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function getTodayKey() {
+  return formatDateKey(new Date());
+}
+
+function getYesterdayKey() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  d.setDate(d.getDate() - 1);
+  return formatDateKey(d);
 }
 
 function getCheckinRecord(userId) {
-  try {
-    const all = uni.getStorageSync(CHECKIN_KEY) || {};
-    return all[userId] || {};
-  } catch (error) {
-    return {};
-  }
+  const all = readLocal(CHECKIN_KEY, {});
+  return all[userId] || {};
 }
 
 function saveCheckinRecord(userId, record) {
-  try {
-    const all = uni.getStorageSync(CHECKIN_KEY) || {};
-    all[userId] = record;
-    uni.setStorageSync(CHECKIN_KEY, all);
-  } catch (error) {
-    // ignore
+  const all = readLocal(CHECKIN_KEY, {});
+  all[userId] = record;
+  saveLocal(CHECKIN_KEY, all);
+}
+
+function isDuplicate(bizType, bizId) {
+  if (!bizId) { return false; }
+  const key = `${bizType}:${bizId}`;
+  const set = readLocal(DEDUP_KEY, {});
+  return !!set[key];
+}
+
+function markProcessed(bizType, bizId) {
+  if (!bizId) { return; }
+  const key = `${bizType}:${bizId}`;
+  const set = readLocal(DEDUP_KEY, {});
+  set[key] = Date.now();
+  const keys = Object.keys(set);
+  if (keys.length > 500) {
+    const sorted = keys.sort((a, b) => set[a] - set[b]);
+    sorted.slice(0, keys.length - 300).forEach((k) => delete set[k]);
   }
+  saveLocal(DEDUP_KEY, set);
 }
 
 function getLedgerCollection() {
@@ -68,9 +93,7 @@ function getLedgerCollection() {
 
 async function addPointsToCloud(userId, change, reason, bizType, bizId) {
   const collection = getLedgerCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const now = Date.now();
   const data = { userId, change, reason, bizType, bizId: bizId || "", createdAt: now };
@@ -80,36 +103,49 @@ async function addPointsToCloud(userId, change, reason, bizType, bizId) {
 
 async function getLedgerFromCloud(userId) {
   const collection = getLedgerCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const res = await collection
     .where({ userId })
     .orderBy("createdAt", "desc")
     .limit(200)
     .get();
-  return (res.data || []).map((item) => normalizeLedgerEntry(item));
+  return (res.data || []).map(normalizeLedgerEntry);
 }
 
 async function getRankingFromCloud(limit = 20) {
   const collection = getLedgerCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
+
+  const batchSize = 100;
+  let allEntries = [];
+  let hasMore = true;
+  let skip = 0;
+
+  while (hasMore && skip < 2000) {
+    const res = await collection
+      .orderBy("createdAt", "desc")
+      .skip(skip)
+      .limit(batchSize)
+      .get();
+    const batch = res.data || [];
+    allEntries = allEntries.concat(batch);
+    hasMore = batch.length === batchSize;
+    skip += batchSize;
   }
 
-  const res = await collection.orderBy("createdAt", "desc").limit(1000).get();
-  const entries = (res.data || []).map((item) => normalizeLedgerEntry(item));
+  return aggregateRanking(allEntries, limit);
+}
 
-  const userTotals = {};
-  entries.forEach((e) => {
-    if (!userTotals[e.userId]) {
-      userTotals[e.userId] = { userId: e.userId, total: 0 };
-    }
-    userTotals[e.userId].total += e.change;
-  });
-
-  return Object.values(userTotals)
+function aggregateRanking(entries, limit) {
+  const totals = {};
+  for (const e of entries) {
+    const uid = e.userId || "";
+    if (!uid) { continue; }
+    if (!totals[uid]) { totals[uid] = { userId: uid, total: 0 }; }
+    totals[uid].total += Number(e.change || 0);
+  }
+  return Object.values(totals)
     .sort((a, b) => b.total - a.total)
     .slice(0, limit);
 }
@@ -118,6 +154,7 @@ async function getRankingFromCloud(limit = 20) {
 
 const POINTS_RULES = {
   checkin: { change: 5, reason: "每日签到" },
+  checkin_streak_bonus: { change: 2, reason: "连续签到奖励" },
   publish_product: { change: 10, reason: "发布商品" },
   complete_order: { change: 15, reason: "完成交易" },
   publish_task: { change: 8, reason: "发布任务" },
@@ -130,9 +167,7 @@ const POINTS_RULES = {
 
 export async function getMyPoints() {
   const userId = getCurrentUserId();
-  if (!userId) {
-    return { total: 0, entries: [] };
-  }
+  if (!userId) { return { total: 0, entries: [] }; }
 
   const cloudEntries = await getLedgerFromCloud(userId).catch(() => null);
   if (cloudEntries) {
@@ -141,24 +176,23 @@ export async function getMyPoints() {
   }
 
   await wait(30);
-  const entries = readLedger(userId).map((item) => normalizeLedgerEntry(item));
+  const entries = readLedger(userId).map(normalizeLedgerEntry);
   const total = entries.reduce((sum, e) => sum + e.change, 0);
   return { total, entries: entries.sort((a, b) => b.createdAt - a.createdAt) };
 }
 
 export async function addPoints(bizType, bizId) {
   const userId = getCurrentUserId();
-  if (!userId) {
-    return null;
-  }
+  if (!userId) { return null; }
 
   const rule = POINTS_RULES[bizType];
-  if (!rule) {
-    return null;
-  }
+  if (!rule) { return null; }
+
+  if (isDuplicate(bizType, bizId)) { return null; }
 
   const cloudEntry = await addPointsToCloud(userId, rule.change, rule.reason, bizType, bizId).catch(() => null);
   if (cloudEntry) {
+    markProcessed(bizType, bizId);
     return cloudEntry;
   }
 
@@ -171,14 +205,13 @@ export async function addPoints(bizType, bizId) {
     createdAt: Date.now()
   });
   saveLedgerEntry(entry);
+  markProcessed(bizType, bizId);
   return entry;
 }
 
 export async function checkin() {
   const userId = getCurrentUserId();
-  if (!userId) {
-    throw new Error("User is not logged in");
-  }
+  if (!userId) { throw new Error("User is not logged in"); }
 
   const todayKey = getTodayKey();
   const record = getCheckinRecord(userId);
@@ -188,17 +221,20 @@ export async function checkin() {
 
   const entry = await addPoints("checkin", todayKey);
 
-  const streak = record.lastDate === getYesterdayKey() ? (record.streak || 0) + 1 : 1;
+  const isConsecutive = record.lastDate === getYesterdayKey();
+  const streak = isConsecutive ? (record.streak || 0) + 1 : 1;
   saveCheckinRecord(userId, { lastDate: todayKey, streak });
+
+  if (isConsecutive && streak > 0 && streak % 7 === 0) {
+    await addPoints("checkin_streak_bonus", `${todayKey}_w${Math.floor(streak / 7)}`).catch(() => null);
+  }
 
   return { entry, streak };
 }
 
 export function getCheckinStatus() {
   const userId = getCurrentUserId();
-  if (!userId) {
-    return { checkedIn: false, streak: 0 };
-  }
+  if (!userId) { return { checkedIn: false, streak: 0 }; }
 
   const todayKey = getTodayKey();
   const record = getCheckinRecord(userId);
@@ -208,48 +244,21 @@ export function getCheckinStatus() {
   };
 }
 
-function getYesterdayKey() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export async function getRanking(limit = 20) {
   const cloudRanking = await getRankingFromCloud(limit).catch(() => null);
-  if (cloudRanking) {
-    return cloudRanking;
-  }
+  if (cloudRanking) { return cloudRanking; }
 
   await wait(30);
-  const all = (() => {
-    try {
-      return uni.getStorageSync(LEDGER_KEY) || [];
-    } catch (error) {
-      return [];
-    }
-  })();
-
-  const userTotals = {};
-  all.forEach((e) => {
-    const uid = e.userId;
-    if (!uid) {
-      return;
-    }
-    if (!userTotals[uid]) {
-      userTotals[uid] = { userId: uid, total: 0 };
-    }
-    userTotals[uid].total += Number(e.change || 0);
-  });
-
-  return Object.values(userTotals)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, limit);
+  const all = readLocal(LEDGER_KEY, []);
+  return aggregateRanking(all, limit);
 }
 
 export function getPointsRules() {
-  return Object.entries(POINTS_RULES).map(([key, val]) => ({
-    type: key,
-    change: val.change,
-    reason: val.reason
-  }));
+  return Object.entries(POINTS_RULES)
+    .filter(([key]) => key !== "checkin_streak_bonus")
+    .map(([key, val]) => ({
+      type: key,
+      change: val.change,
+      reason: val.reason
+    }));
 }

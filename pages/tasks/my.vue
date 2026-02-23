@@ -205,7 +205,7 @@ export default {
       if (this.recordScope === "history") {
         list = list.filter((item) => item.status === "completed" || item.status === "cancelled");
       } else {
-        list = list.filter((item) => item.status === "open" || item.status === "assigned");
+        list = list.filter((item) => ["open", "assigned", "picked_up", "delivered"].includes(item.status));
       }
 
       if (this.typeFilter !== "all") {
@@ -259,6 +259,8 @@ export default {
         const res = await listMyTasks(this.profile.userId);
         this.publishedList = res.published || [];
         this.acceptedList = res.accepted || [];
+      } catch (error) {
+        uni.showToast({ title: "加载任务失败", icon: "none" });
       } finally {
         this.loading = false;
       }
@@ -271,19 +273,15 @@ export default {
     },
 
     getStatusText(status) {
-      if (status === "open") {
-        return "待接单";
-      }
-      if (status === "assigned") {
-        return "进行中";
-      }
-      if (status === "completed") {
-        return "已完成";
-      }
-      if (status === "cancelled") {
-        return "已取消";
-      }
-      return "未知";
+      const map = {
+        open: "待接单",
+        assigned: "进行中",
+        picked_up: "已取件",
+        delivered: "已送达",
+        completed: "已完成",
+        cancelled: "已取消"
+      };
+      return map[status] || "未知";
     },
 
     normalizeTaskType(type) {

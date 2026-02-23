@@ -45,7 +45,7 @@ export const useUserStore = defineStore("user", {
     },
 
     updateProfile(partial = {}) {
-      if (!this.profile) { return; }
+      if (!this.profile || !this.token) { return; }
       this.profile = { ...this.profile, ...partial };
       saveAuthInfo(this.profile, this.token);
     },

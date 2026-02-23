@@ -1,13 +1,14 @@
 <script>
-import { initCloud } from "@/utils/cloud";
-import { getFestivalTheme, getSeasonTheme } from "@/utils/easter-eggs";
 import { getStoredToken } from "@/utils/auth";
 import { listConversations } from "@/utils/chat-service";
+import { initCloud } from "@/utils/cloud";
+import { getFestivalTheme, getSeasonTheme } from "@/utils/easter-eggs";
 
 export default {
   globalData: {
     festival: null,
-    season: "spring"
+    season: "spring",
+    hasShownSplash: false
   },
 
   onLaunch() {
@@ -43,10 +44,15 @@ export default {
         const conversations = await listConversations().catch(() => []);
         const unread = conversations.reduce((sum, item) => sum + (item.unread || 0), 0);
         if (unread > 0) {
-          uni.setTabBarBadge({ index: 2, text: unread > 99 ? "99+" : String(unread) });
+          // 在非 tabbar 页面调用可能会报错，做个 try-catch 保护
+          try {
+            uni.setTabBarBadge({ index: 2, text: unread > 99 ? "99+" : String(unread) });
+          } catch (err) {
+            console.warn("[App] setTabBarBadge failed:", err);
+          }
         }
       } catch (e) {
-        // non-blocking
+        console.warn("[App] initUnreadBadge failed:", e);
       }
     }
   }
@@ -62,16 +68,16 @@ page {
   font-size: 28rpx;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
-  --ui-bg: #f2f5fc;
-  --ui-surface: #ffffff;
-  --ui-primary: #2f6bff;
-  --ui-primary-strong: #2459d6;
-  --ui-success: #24b987;
-  --ui-warning: #f39b34;
-  --ui-danger: #e25269;
-  --ui-text-main: #1a2540;
-  --ui-text-soft: #65728a;
-  --ui-line: #e5ebf8;
+  --ui-bg: #{$app-bg};
+  --ui-surface: #{$card-bg};
+  --ui-primary: #{$primary-color};
+  --ui-primary-strong: #{$primary-strong};
+  --ui-success: #{$success-color};
+  --ui-warning: #{$warning-color};
+  --ui-danger: #{$danger-color};
+  --ui-text-main: #{$text-primary};
+  --ui-text-soft: #{$text-secondary};
+  --ui-line: #{$line-color};
 }
 
 .page-container {
@@ -178,6 +184,16 @@ button.ui-btn-muted::after {
 @keyframes anim-slide-right {
   from { opacity: 0; transform: translateX(-40rpx); }
   to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes anim-float-up {
+  from { opacity: 0; transform: translateY(60rpx) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes anim-stagger-fade {
+  from { opacity: 0; transform: translateY(20rpx); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes anim-bounce-in {
@@ -368,8 +384,8 @@ button.ui-btn-muted::after {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 .card-press:active {
-  transform: scale(0.97) translateY(2rpx);
-  box-shadow: 0 4rpx 14rpx rgba(24, 37, 66, 0.16);
+  transform: scale(0.96) translateY(2rpx);
+  box-shadow: 0 2rpx 8rpx rgba(24, 37, 66, 0.12);
 }
 
 .btn-bounce {

@@ -1,6 +1,14 @@
 <template>
   <view class="feed-detail-page">
-    <view v-if="loading" class="loading">加载中...</view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+      <view class="orb orb-2 anim-float-x"></view>
+    </view>
+
+    <view v-if="loading" class="loading-state">
+      <view class="loading-spinner"></view>
+      <text>加载中...</text>
+    </view>
 
     <empty-state
       v-else-if="!feed"
@@ -11,86 +19,131 @@
     />
 
     <template v-else>
-      <view class="feed-card glass-strong anim-slide-down" style="border-radius: 24rpx;">
-        <view class="feed-author">
-          <view class="author-avatar-ring">
-            <image v-if="feed.authorAvatar" :src="feed.authorAvatar" class="avatar" mode="aspectFill" />
-            <view v-else class="avatar-placeholder">{{ (feed.authorName || '?')[0] }}</view>
+      <view class="feed-card glass-strong anim-slide-down" style="border-radius: 28rpx;">
+        <view class="feed-header">
+          <view class="avatar-ring" v-if="feed.authorAvatar">
+            <image :src="feed.authorAvatar" class="avatar" mode="aspectFill" />
           </view>
+          <view v-else class="avatar-placeholder">{{ (feed.authorName || '?')[0] }}</view>
           <view class="author-info">
-            <text class="author-name">{{ feed.authorName }}</text>
+            <view class="name-row">
+              <text class="author-name">{{ feed.authorName }}</text>
+              <text v-if="feed.topic" class="topic-chip">{{ feed.topic }}</text>
+            </view>
             <text class="feed-time">{{ formatTime(feed.createdAt) }}</text>
           </view>
-          <text v-if="feed.topic" class="topic-chip">{{ feed.topic }}</text>
         </view>
+        
         <view class="feed-content">{{ feed.content }}</view>
+        
         <view v-if="feed.images && feed.images.length > 0" class="feed-images">
           <view
             v-for="(img, idx) in feed.images"
             :key="idx"
-            class="feed-img-wrap img-zoom-wrap"
+            class="image-wrapper img-zoom-wrap"
             @tap="previewImage(feed.images, idx)"
           >
             <image :src="img" class="feed-img" mode="aspectFill" />
           </view>
         </view>
-        <view class="feed-stats">
-          <view :class="['stat-item', 'btn-bounce', isLiked ? 'liked' : '']" @tap="handleLike">
-            <text :class="['like-icon', likeAnimating ? 'anim-heart' : '']">{{ isLiked ? '❤️' : '🤍' }}</text>
-            <text>{{ feed.likeCount || 0 }} 赞</text>
+        
+        <view class="feed-footer">
+          <view class="action-group">
+            <view :class="['action-btn', isLiked ? 'liked' : '']" @tap="handleLike">
+              <text :class="['action-icon', likeAnimating ? 'anim-heart' : '']">{{ isLiked ? '❤️' : '🤍' }}</text>
+              <text class="action-text">{{ feed.likeCount || '赞' }}</text>
+            </view>
+            <view class="action-btn">
+              <text class="action-icon">💬</text>
+              <text class="action-text">{{ comments.length || '评论' }}</text>
+            </view>
           </view>
-          <view class="stat-item">
-            <text>💬 {{ comments.length }} 评论</text>
-          </view>
-          <view class="stat-item" @tap="reportFeed" v-if="!isOwner">
-            <text>🚩 举报</text>
-          </view>
-          <view class="stat-item delete-action" @tap="handleDeleteFeed" v-if="isOwner">
-            <text>🗑️ 删除</text>
+          
+          <view class="action-group">
+            <view v-if="isOwner" class="action-btn icon-only" @tap="handleDeleteFeed">
+              <text class="action-icon">🗑️</text>
+            </view>
+            <view v-else class="action-btn icon-only" @tap="reportFeed">
+              <text class="action-icon">⚠️</text>
+            </view>
           </view>
         </view>
       </view>
 
-      <view class="comment-section glass-strong anim-slide-up anim-d1" style="border-radius: 24rpx;">
-        <view class="section-title">评论 ({{ comments.length }})</view>
-        <view v-if="comments.length === 0" class="no-comment anim-fade-in">暂无评论，来说两句吧</view>
-        <view
-          v-for="(c, idx) in comments"
-          :key="c.id"
-          :class="['comment-item', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 1)) : '']"
-        >
-          <view class="comment-head">
-            <text class="comment-author">{{ c.authorName }}</text>
-            <text v-if="c.replyToName" class="reply-hint"> 回复 {{ c.replyToName }}</text>
-            <text class="comment-time">{{ formatTime(c.createdAt) }}</text>
+      <view class="comment-section glass-strong anim-slide-up anim-d2" style="border-radius: 28rpx;">
+        <view class="section-header">
+          <text class="section-title">全部评论</text>
+          <text class="comment-count-badge">{{ comments.length }}</text>
+        </view>
+        
+        <view v-if="comments.length === 0" class="empty-comment">
+          <text class="empty-emoji anim-float">💬</text>
+          <text>暂无评论，来做第一个发言的人吧</text>
+        </view>
+        
+        <view class="comment-list">
+          <view
+            v-for="(cmt, idx) in comments"
+            :key="cmt.id"
+            :class="['comment-item', 'anim-stagger-fade', idx < 10 ? ('anim-d' + (idx + 1)) : '']"
+            @tap="setReplyTarget(cmt)"
+          >
+            <view class="comment-avatar">{{ (cmt.authorName || '?')[0] }}</view>
+            <view class="comment-content">
+              <view class="comment-head">
+                <text class="comment-author">{{ cmt.authorName }}</text>
+                <text v-if="cmt.replyToName" class="reply-hint">
+                  <text class="reply-arrow">▸</text> {{ cmt.replyToName }}
+                </text>
+                <text class="comment-time">{{ formatTime(cmt.createdAt) }}</text>
+              </view>
+              <view class="comment-body">{{ cmt.content }}</view>
+            </view>
           </view>
-          <view class="comment-body card-press" @tap="setReplyTarget(c)">{{ c.content }}</view>
+        </view>
+      </view>
+
+      <view class="input-bar-container">
+        <view class="input-bar glass-strong">
+          <view v-if="replyTarget" class="reply-badge" @tap="replyTarget = null">
+            <text>回复 {{ replyTarget.authorName }}</text>
+            <text class="close-icon">×</text>
+          </view>
+          <view class="input-wrapper">
+            <input
+              v-model="commentText"
+              class="comment-input"
+              :placeholder="replyTarget ? '说点什么...' : '写下你的评论...'"
+              confirm-type="send"
+              :adjust-position="true"
+              @confirm="submitComment"
+            />
+            <button 
+              class="send-btn btn-bounce" 
+              :class="{ 'active': commentText.trim().length > 0 }"
+              @tap="submitComment" 
+              :loading="commentSubmitting"
+            >
+              发送
+            </button>
+          </view>
         </view>
       </view>
     </template>
 
-    <view class="input-bar" v-if="feed">
-      <input
-        v-model.trim="commentText"
-        class="comment-input"
-        :placeholder="replyTarget ? `回复 ${replyTarget.authorName}` : '写评论...'"
-        confirm-type="send"
-        @confirm="submitComment"
-      />
-      <button class="send-btn" :loading="commentSubmitting" @tap="submitComment">发送</button>
-    </view>
+    <report-dialog ref="reportDialog" />
   </view>
 </template>
 
 <script>
 import EmptyState from "@/components/empty-state/empty-state.vue";
+import ReportDialog from "@/components/report-dialog/report-dialog.vue";
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
-import { getFeedById, toggleLike, listComments, addComment, deleteFeed } from "@/utils/feed-service";
-import { submitReport, REPORT_REASONS } from "@/utils/report-service";
+import { getFeedById, toggleLike, deleteFeed, listComments, addComment } from "@/utils/feed-service";
 
 export default {
-  components: { EmptyState },
+  components: { EmptyState, ReportDialog },
 
   data() {
     return {
@@ -141,12 +194,25 @@ export default {
         uni.navigateTo({ url: "/pages/login/login" });
         return;
       }
+      if (!this.feed) { return; }
       this.likeAnimating = true;
-      setTimeout(() => { this.likeAnimating = false; }, 1200);
+      setTimeout(() => { this.likeAnimating = false; }, 600);
+
+      const prev = { ...this.feed };
+      const wasLiked = this.isLiked;
+      this.feed = {
+        ...this.feed,
+        likedBy: wasLiked
+          ? (this.feed.likedBy || []).filter((id) => id !== this.myUserId)
+          : [...(this.feed.likedBy || []), this.myUserId],
+        likeCount: Math.max(0, (this.feed.likeCount || 0) + (wasLiked ? -1 : 1))
+      };
+
       try {
-        await toggleLike(this.feedId);
-        this.feed = await getFeedById(this.feedId).catch(() => this.feed);
+        const result = await toggleLike(this.feedId);
+        if (result === null) { this.feed = prev; }
       } catch (e) {
+        this.feed = prev;
         uni.showToast({ title: "操作失败", icon: "none" });
       }
     },
@@ -156,7 +222,7 @@ export default {
     },
 
     async submitComment() {
-      if (!this.commentText) { return; }
+      if (!this.commentText.trim()) { return; }
       if (!this.isLogin) {
         uni.navigateTo({ url: "/pages/login/login" });
         return;
@@ -167,7 +233,7 @@ export default {
       try {
         await addComment({
           feedId: this.feedId,
-          content: this.commentText,
+          content: this.commentText.trim(),
           replyToCommentId: this.replyTarget?.id || "",
           replyToName: this.replyTarget?.authorName || ""
         });
@@ -187,25 +253,7 @@ export default {
         uni.navigateTo({ url: "/pages/login/login" });
         return;
       }
-      const labels = REPORT_REASONS.map((r) => r.label);
-      uni.showActionSheet({
-        itemList: labels,
-        success: async (res) => {
-          const selected = REPORT_REASONS[res.tapIndex];
-          if (!selected) { return; }
-          try {
-            await submitReport({
-              targetType: "feed",
-              targetId: this.feedId,
-              reason: selected.value,
-              detail: `举报动态: ${(this.feed.content || "").slice(0, 30)}`
-            });
-            uni.showToast({ title: "举报已提交，感谢反馈", icon: "success" });
-          } catch (error) {
-            uni.showToast({ title: error?.message || "举报失败", icon: "none" });
-          }
-        }
-      });
+      this.$refs.reportDialog.open("feed", this.feedId);
     },
 
     handleDeleteFeed() {
@@ -231,88 +279,308 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "@/styles/anim-extra.scss";
-
 .feed-detail-page {
-  padding: 24rpx; padding-bottom: 140rpx;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0) 45%),
-    radial-gradient(circle at 88% 30%, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0) 40%),
-    #f2f5fc;
+  position: relative;
+  padding: 24rpx;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
 }
-.loading { margin-top: 100rpx; text-align: center; color: #8a95ac; font-size: 25rpx; }
-.feed-card { padding: 24rpx; }
-.feed-author { display: flex; align-items: center; gap: 12rpx; }
-.author-avatar-ring {
-  width: 76rpx; height: 76rpx; border-radius: 50%;
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.45;
+}
+.orb-1 {
+  width: 200rpx; height: 200rpx;
+  top: -30rpx; left: -40rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.28), transparent 70%);
+}
+.orb-2 {
+  width: 160rpx; height: 160rpx;
+  top: 500rpx; right: -30rpx;
+  background: radial-gradient(circle, rgba(19, 194, 163, 0.22), transparent 70%);
+}
+
+/* Feed Card */
+.feed-card {
+  position: relative;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-bottom: 20rpx;
+}
+.avatar-ring {
+  width: 88rpx; height: 88rpx;
+  border-radius: 50%;
   padding: 3rpx;
-  background: linear-gradient(135deg, #7c3aed, #2f6bff);
+  background: linear-gradient(135deg, #2f6bff, #13c2a3);
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.2);
+}
+.avatar {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  border: 3rpx solid #fff;
+  display: block;
+}
+.avatar-placeholder {
+  width: 88rpx; height: 88rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8efff, #dfe9ff);
+  color: #4b62a8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: 700;
   flex-shrink: 0;
 }
-.avatar { width: 100%; height: 100%; border-radius: 50%; border: 3rpx solid #fff; display: block; }
-.avatar-placeholder {
-  width: 100%; height: 100%; border-radius: 50%; background: #e8e0f8; color: #7c3aed;
-  display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700;
-  border: 3rpx solid #fff;
-}
-.author-info { flex: 1; min-width: 0; }
-.author-name { display: block; color: #1a2540; font-size: 28rpx; font-weight: 700; }
-.feed-time { display: block; color: #8a95ac; font-size: 22rpx; margin-top: 4rpx; }
+
+.author-info { flex: 1; }
+.name-row { display: flex; align-items: center; gap: 12rpx; }
+.author-name { font-size: 30rpx; font-weight: 700; color: #1a2540; }
 .topic-chip {
-  background: rgba(124, 58, 237, 0.1); color: #7b5ec6; border-radius: 999rpx;
-  padding: 4rpx 14rpx; font-size: 20rpx; font-weight: 600; flex-shrink: 0;
+  height: 36rpx; line-height: 36rpx; padding: 0 14rpx;
+  border-radius: 999rpx; background: rgba(47, 107, 255, 0.08);
+  color: #4a78d4; font-size: 20rpx; font-weight: 600;
 }
-.feed-content { margin-top: 18rpx; color: #2b3345; font-size: 28rpx; line-height: 1.7; }
-.feed-images { margin-top: 14rpx; display: flex; gap: 10rpx; flex-wrap: wrap; }
-.feed-img-wrap {
-  width: 210rpx; height: 210rpx; border-radius: 16rpx; overflow: hidden;
-  box-shadow: 0 4rpx 12rpx rgba(31, 38, 66, 0.08);
+.feed-time { font-size: 24rpx; color: #8a95ac; margin-top: 4rpx; display: block; }
+
+.feed-content {
+  font-size: 30rpx;
+  color: #2b3a56;
+  line-height: 1.65;
+  margin-bottom: 22rpx;
+  word-break: break-all;
+}
+
+/* Images Grid */
+.feed-images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10rpx;
+  margin-bottom: 24rpx;
+}
+.image-wrapper {
+  position: relative;
+  border-radius: 16rpx;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  box-shadow: 0 4rpx 12rpx rgba(26, 38, 66, 0.06);
 }
 .feed-img {
-  width: 100%; height: 100%; display: block;
+  width: 100%; height: 100%;
+  background-color: #eef2fb;
+  display: block;
 }
-.feed-stats {
-  margin-top: 18rpx; display: flex; gap: 28rpx; padding-top: 16rpx;
-  border-top: 1rpx solid rgba(238, 240, 246, 0.6);
+
+/* Footer Actions */
+.feed-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 18rpx;
+  border-top: 1rpx solid rgba(228, 235, 251, 0.5);
 }
-.stat-item {
-  display: flex; align-items: center; gap: 6rpx;
-  color: #6a7e9a; font-size: 24rpx;
-  transition: color 0.2s ease;
+.action-group { display: flex; gap: 16rpx; }
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 12rpx 26rpx;
+  border-radius: 999rpx;
+  background: rgba(238, 242, 251, 0.6);
+  transition: all 0.2s ease;
 }
-.stat-item.liked { color: #e63950; }
-.stat-item.delete-action { color: #e25269; }
-.like-icon { display: inline-block; font-size: 26rpx; }
-.comment-section { margin-top: 14rpx; padding: 22rpx; }
-.section-title { color: #1a2540; font-size: 27rpx; font-weight: 700; margin-bottom: 14rpx; }
-.no-comment { color: #8a95ac; font-size: 24rpx; text-align: center; padding: 30rpx 0; }
-.comment-item { padding: 14rpx 0; border-bottom: 1rpx solid rgba(240, 242, 248, 0.6); }
-.comment-item:last-child { border-bottom: none; }
-.comment-head { display: flex; align-items: center; gap: 8rpx; }
-.comment-author { color: #4a5a78; font-size: 23rpx; font-weight: 700; }
-.reply-hint { color: #8a95ac; font-size: 22rpx; }
-.comment-time { margin-left: auto; color: #8a95ac; font-size: 20rpx; }
-.comment-body {
-  margin-top: 8rpx; color: #2b3345; font-size: 25rpx; line-height: 1.6;
-  padding: 8rpx 0; border-radius: 8rpx;
+.action-btn:active { background: rgba(228, 235, 251, 0.9); transform: scale(0.95); }
+.action-btn.icon-only { padding: 12rpx 16rpx; }
+.action-btn.liked { background: rgba(255, 215, 220, 0.5); }
+.action-btn.liked .action-text { color: #e25269; font-weight: 700; }
+.action-icon { font-size: 30rpx; }
+.action-text { font-size: 26rpx; font-weight: 600; color: #6a7e9a; }
+
+/* Comment Section */
+.comment-section {
+  position: relative;
+  padding: 28rpx;
+  overflow: hidden;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+.section-title { font-size: 30rpx; font-weight: 800; color: #1a2540; }
+.comment-count-badge {
+  height: 36rpx; line-height: 36rpx; padding: 0 14rpx;
+  border-radius: 999rpx; background: rgba(47, 107, 255, 0.08);
+  color: #4a78d4; font-size: 22rpx; font-weight: 700;
+}
+
+.empty-comment {
+  padding: 50rpx 0;
+  text-align: center;
+  color: #8a95ac;
+  font-size: 26rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+.empty-emoji { font-size: 48rpx; }
+
+.comment-item {
+  display: flex;
+  gap: 18rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid rgba(228, 235, 251, 0.5);
+}
+.comment-item:last-child { border-bottom: none; padding-bottom: 0; }
+.comment-item:active {
+  background-color: rgba(238, 242, 251, 0.4);
+  border-radius: 16rpx;
+  margin: 0 -8rpx;
+  padding-left: 8rpx;
+  padding-right: 8rpx;
+}
+
+.comment-avatar {
+  width: 64rpx; height: 64rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8efff, #dfe9ff);
+  color: #4b62a8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.comment-content { flex: 1; }
+.comment-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-bottom: 6rpx;
+}
+.comment-author { font-size: 26rpx; font-weight: 700; color: #1a2540; }
+.reply-hint {
+  font-size: 24rpx; color: #8a95ac;
+  display: flex; align-items: center; gap: 4rpx;
+}
+.reply-arrow { font-size: 18rpx; }
+.comment-time { font-size: 22rpx; color: #b0b8cc; margin-left: auto; }
+.comment-body { font-size: 28rpx; color: #3a4a68; line-height: 1.55; }
+
+/* Input Bar */
+.input-bar-container {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
 }
 .input-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; padding: 14rpx 20rpx 28rpx;
-  display: flex; gap: 12rpx;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20rpx); -webkit-backdrop-filter: blur(20rpx);
-  border-top: 1rpx solid rgba(228, 235, 251, 0.6);
+  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  border-radius: 28rpx 28rpx 0 0 !important;
+}
+.reply-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  background: rgba(47, 107, 255, 0.06);
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  color: #4a78d4;
+  font-weight: 500;
+  align-self: flex-start;
+  border: 1rpx solid rgba(47, 107, 255, 0.12);
+}
+.close-icon { font-size: 28rpx; line-height: 1; color: #8a95ac; }
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
 }
 .comment-input {
-  flex: 1; height: 76rpx; padding: 0 22rpx; border-radius: 38rpx;
-  background: rgba(243, 245, 251, 0.9); color: #2b3345; font-size: 26rpx;
+  flex: 1;
+  height: 76rpx;
+  background: rgba(238, 242, 251, 0.7);
+  border-radius: 38rpx;
+  padding: 0 28rpx;
+  font-size: 28rpx;
+  color: #1a2540;
   border: 1rpx solid rgba(228, 235, 251, 0.5);
 }
 .send-btn {
-  margin: 0; height: 76rpx; line-height: 76rpx; border-radius: 38rpx; border: none;
-  background: linear-gradient(135deg, #7c3aed, #9b5bf5); color: #fff;
-  font-size: 26rpx; font-weight: 600; padding: 0 30rpx;
-  box-shadow: 0 4rpx 14rpx rgba(124, 58, 237, 0.3);
+  margin: 0;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 36rpx;
+  border-radius: 38rpx;
+  background: rgba(238, 242, 251, 0.7);
+  color: #8a95ac;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: none;
+  transition: all 0.25s ease;
+}
+.send-btn.active {
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
+  color: #ffffff;
+  box-shadow: 0 6rpx 16rpx rgba(47, 107, 255, 0.25);
 }
 .send-btn::after { border: none; }
+
+/* States */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 40rpx;
+  gap: 16rpx;
+  color: #8a95ac;
+  font-size: 26rpx;
+}
+.loading-spinner {
+  width: 48rpx; height: 48rpx;
+  border: 4rpx solid #e0e8f8;
+  border-top-color: #2f6bff;
+  border-radius: 50%;
+  animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.anim-heart {
+  animation: heartPulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes heartPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
 </style>

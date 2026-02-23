@@ -50,7 +50,8 @@ export default {
 
   data() {
     return {
-      taskList: []
+      taskList: [],
+      loading: false
     };
   },
 
@@ -84,13 +85,15 @@ export default {
     },
 
     async loadTasks(showToast = false) {
-      const list = await listTasks().catch(() => []);
-      this.taskList = list.filter((item) => this.normalizeTaskType(item.type) === "代取快递");
-      if (showToast) {
-        uni.showToast({
-          title: "已刷新",
-          icon: "none"
-        });
+      this.loading = true;
+      try {
+        const list = await listTasks().catch(() => []);
+        this.taskList = list.filter((item) => this.normalizeTaskType(item.type) === "代取快递");
+        if (showToast) {
+          uni.showToast({ title: "已刷新", icon: "none" });
+        }
+      } finally {
+        this.loading = false;
       }
     },
 

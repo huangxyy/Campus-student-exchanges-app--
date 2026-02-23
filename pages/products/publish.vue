@@ -577,13 +577,13 @@ export default {
           aiGenerated: finalDescription.includes("【AI建议文案】")
         });
 
-        this.submitting = false;
-
         const matches = await findMatchingWants({
           title: this.formData.title,
           category: this.formData.category,
           price: priceNum
         }).catch(() => []);
+
+        this.submitting = false;
 
         if (matches.length > 0) {
           uni.showModal({
@@ -606,11 +606,12 @@ export default {
           }, 700);
         }
       } catch (error) {
-        this.submitting = false;
         uni.showToast({
           title: "发布失败，请重试",
           icon: "none"
         });
+      } finally {
+        this.submitting = false;
       }
     }
   }

@@ -2,6 +2,7 @@ import { getCurrentUserId, wait } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 
 const FAVORITES_KEY = "cm_favorites";
+const _toggleLocks = new Set();
 
 function getUserFavoritesKey(userId) {
   return `${FAVORITES_KEY}_${userId || "guest"}`;
@@ -155,40 +156,42 @@ export async function isProductFavorited(productId) {
 
 export async function toggleFavorite(product) {
   if (!product || !product._id) {
-    return {
-      favorited: false
-    };
+    return { favorited: false };
   }
 
   const userId = getCurrentUserId();
   if (!userId) {
-    return {
-      favorited: false
-    };
+    return { favorited: false };
   }
 
-  const cloudResult = await toggleFavoriteInCloud(userId, product).catch(() => null);
-  if (cloudResult) {
-    return cloudResult;
+  const lockKey = `${userId}:${product._id}`;
+  if (_toggleLocks.has(lockKey)) {
+    return { favorited: readFavorites(userId).some((item) => item._id === product._id) };
   }
 
-  const list = readFavorites(userId);
-  const targetIndex = list.findIndex((item) => item._id === product._id);
-  if (targetIndex >= 0) {
-    list.splice(targetIndex, 1);
+  _toggleLocks.add(lockKey);
+  try {
+    const cloudResult = await toggleFavoriteInCloud(userId, product).catch(() => null);
+    if (cloudResult) {
+      return cloudResult;
+    }
+
+    const list = readFavorites(userId);
+    const targetIndex = list.findIndex((item) => item._id === product._id);
+    if (targetIndex >= 0) {
+      list.splice(targetIndex, 1);
+      saveFavorites(userId, list);
+      await wait();
+      return { favorited: false };
+    }
+
+    list.unshift(buildSnapshot(product));
     saveFavorites(userId, list);
     await wait();
-    return {
-      favorited: false
-    };
+    return { favorited: true };
+  } finally {
+    _toggleLocks.delete(lockKey);
   }
-
-  list.unshift(buildSnapshot(product));
-  saveFavorites(userId, list);
-  await wait();
-  return {
-    favorited: true
-  };
 }
 
 export async function listFavorites() {

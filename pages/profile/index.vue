@@ -67,7 +67,13 @@
     </view>
 
     <view class="menu glass-strong anim-slide-up anim-d4" style="border-radius: 24rpx;">
-      <view class="menu-item card-press" v-for="item in menuItems" :key="item.key" @tap="handleMenuTap(item)">
+      <view
+        class="menu-item card-press anim-stagger-fade"
+        v-for="(item, index) in menuItems"
+        :key="item.key"
+        :class="'anim-d' + (index % 10 + 1)"
+        @tap="handleMenuTap(item)"
+      >
         <view class="menu-left">
           <view :class="['menu-icon', item.tone]">{{ item.icon }}</view>
           <view class="menu-text">

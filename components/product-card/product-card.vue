@@ -1,5 +1,5 @@
 <template>
-  <view class="product-card card-press anim-slide-up" @tap="handleTap">
+  <view class="product-card card-press" @tap="handleTap">
     <view class="cover-wrap img-zoom-wrap">
       <image class="cover" :src="cover" mode="aspectFill" lazy-load />
       <view class="cover-mask"></view>
@@ -13,7 +13,14 @@
       <view v-if="product.status === 'sold'" class="sold-overlay">
         <text class="sold-text">已售出</text>
       </view>
-      <view v-if="product.aiGenerated && product.status !== 'sold'" class="ai-tag anim-pulse">AI 推荐</view>
+      <view v-else-if="product.status === 'reserved'" class="sold-overlay reserved-overlay">
+        <text class="sold-text">已预留</text>
+      </view>
+      <view v-else-if="product.status === 'unavailable'" class="sold-overlay unavailable-overlay">
+        <text class="sold-text">已下架</text>
+      </view>
+      <view v-if="product.aiGenerated && product.status === 'available'" class="ai-tag anim-pulse">AI 推荐</view>
+      <view v-if="discountPercent > 0" class="discount-tag">{{ discountPercent }}折</view>
     </view>
 
     <view class="content">
@@ -25,6 +32,7 @@
           <text class="price-symbol">¥</text>
           <text class="price">{{ product.price }}</text>
           <text v-if="product.originalPrice" class="original-price">¥{{ product.originalPrice }}</text>
+          <text v-if="savingsText" class="savings-tag">省{{ savingsText }}</text>
         </view>
         <text class="views">{{ metricText }}</text>
       </view>
@@ -40,8 +48,11 @@
             <image class="avatar" :src="sellerAvatar" mode="aspectFill" />
           </view>
           <text class="name">{{ product.userName || "校园用户" }}</text>
+          <text v-if="product.certified" class="seller-cert">✓</text>
         </view>
-        <text class="time">{{ timeText }}</text>
+        <view class="bottom-right">
+          <text class="time">{{ timeText }}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -92,6 +103,21 @@ export default {
         return `${this.distanceText} · ${this.product.views} 浏览`;
       }
       return `${this.product.views} 浏览`;
+    },
+
+    discountPercent() {
+      const price = Number(this.product.price);
+      const original = Number(this.product.originalPrice);
+      if (!original || !price || original <= price) return 0;
+      return Math.round((price / original) * 10);
+    },
+
+    savingsText() {
+      const price = Number(this.product.price);
+      const original = Number(this.product.originalPrice);
+      if (!original || !price || original <= price) return "";
+      const saved = original - price;
+      return saved >= 1 ? `¥${saved}` : "";
     }
   },
 
@@ -317,6 +343,12 @@ export default {
     justify-content: center;
     z-index: 5;
   }
+  .reserved-overlay {
+    background: rgba(47, 107, 255, 0.45);
+  }
+  .unavailable-overlay {
+    background: rgba(100, 110, 130, 0.45);
+  }
 
   .sold-text {
     padding: 12rpx 32rpx;
@@ -342,6 +374,51 @@ export default {
     box-shadow: 0 4rpx 14rpx rgba(19, 194, 163, 0.35);
     backdrop-filter: blur(4rpx);
     -webkit-backdrop-filter: blur(4rpx);
+  }
+
+  .discount-tag {
+    position: absolute;
+    left: 18rpx; bottom: 18rpx;
+    height: 38rpx;
+    line-height: 38rpx;
+    padding: 0 14rpx;
+    border-radius: 10rpx;
+    background: linear-gradient(135deg, rgba(230, 57, 80, 0.92), rgba(220, 40, 60, 0.95));
+    color: #fff;
+    font-size: 20rpx;
+    font-weight: 700;
+    box-shadow: 0 4rpx 12rpx rgba(230, 57, 80, 0.3);
+    backdrop-filter: blur(4rpx);
+    -webkit-backdrop-filter: blur(4rpx);
+  }
+
+  .savings-tag {
+    margin-left: 6rpx;
+    font-size: 18rpx;
+    color: #e63950;
+    background: rgba(230, 57, 80, 0.06);
+    padding: 2rpx 8rpx;
+    border-radius: 6rpx;
+    font-weight: 600;
+  }
+
+  .seller-cert {
+    width: 26rpx;
+    height: 26rpx;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2f6bff, #2459d6);
+    color: #fff;
+    font-size: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .bottom-right {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
   }
 }
 </style>

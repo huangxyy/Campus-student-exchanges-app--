@@ -32,7 +32,7 @@
         </view>
 
         <view
-          :class="['message-row', item.sender === 'me' ? 'me' : item.sender === 'system' ? 'system' : 'peer']"
+          :class="['message-row', item.sender === 'me' ? 'me' : item.sender === 'system' ? 'system' : 'peer', 'anim-stagger-fade', 'anim-d' + (idx % 10 + 1)]"
         >
           <image
             v-if="item.type === 'image'"
@@ -761,18 +761,23 @@ export default {
 }
 
 .card-bubble {
-  max-width: 78%;
+  padding: 24rpx;
+  background: linear-gradient(145deg, #ffffff, #fafbff);
+  border: 1rpx solid rgba(215, 226, 246, 0.8);
+  border-radius: 20rpx;
+  max-width: 460rpx;
   min-width: 280rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 18rpx;
-  background: #ffffff;
-  border: 1rpx solid #dfe8fb;
-  box-shadow: 0 6rpx 18rpx rgba(29, 48, 90, 0.08);
+  box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
 .message-row.me .card-bubble {
-  background: linear-gradient(140deg, #e9f0ff, #f2f6ff);
-  border-color: #cfddff;
+  background: linear-gradient(145deg, #f2f7ff, #e9effc);
+  border: 1rpx solid rgba(193, 212, 248, 0.6);
+  border-radius: 20rpx 20rpx 4rpx 20rpx;
+}
+
+.message-row.peer .card-bubble {
+  border-radius: 20rpx 20rpx 20rpx 4rpx;
 }
 
 .card-type {

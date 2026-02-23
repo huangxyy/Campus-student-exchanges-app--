@@ -80,6 +80,7 @@ export default {
   data() {
     return {
       list: [],
+      loading: false,
       keyword: "",
       currentCategory: "全部",
       categories: ["全部", "数码", "书籍", "生活", "服饰", "其他"],
@@ -131,8 +132,13 @@ export default {
     },
 
     async loadList() {
-      this.list = await listWants().catch(() => []);
-      this.visibleCount = this.pageSize;
+      this.loading = true;
+      try {
+        this.list = await listWants().catch(() => []);
+        this.visibleCount = this.pageSize;
+      } finally {
+        this.loading = false;
+      }
     },
 
     goPublish() {

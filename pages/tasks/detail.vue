@@ -14,11 +14,20 @@
       <view class="hero card">
         <view class="head">
           <view class="title">{{ task.title }}</view>
-          <view class="reward-pill">赏金 ¥{{ task.reward }}</view>
+          <view class="reward-pill">
+            <text class="reward-label">赏金</text>
+            <text class="reward-value">¥{{ task.reward }}</text>
+          </view>
         </view>
         <view class="status-row">
           <text :class="['ui-chip', statusChipTone]">{{ statusText }}</text>
           <text class="time">发布于 {{ createdAtText }}</text>
+        </view>
+        <view class="progress-track" v-if="task.status !== 'cancelled'">
+          <view v-for="(step, idx) in progressSteps" :key="step.key" :class="['progress-step', step.active ? 'step-active' : '', step.done ? 'step-done' : '']">
+            <view class="step-dot">{{ step.done ? '✓' : idx + 1 }}</view>
+            <text class="step-label">{{ step.label }}</text>
+          </view>
         </view>
       </view>
 
@@ -346,6 +355,21 @@ export default {
         this.showCancelAction ||
         this.showReportAction
       );
+    },
+
+    progressSteps() {
+      const status = this.task?.status || "open";
+      const flow = this.isExpressTask
+        ? ["open", "assigned", "picked_up", "delivered", "completed"]
+        : ["open", "assigned", "completed"];
+      const labels = { open: "待接单", assigned: "已接单", picked_up: "已取件", delivered: "已送达", completed: "已完成" };
+      const currentIdx = flow.indexOf(status);
+      return flow.map((key, idx) => ({
+        key,
+        label: labels[key] || key,
+        done: idx < currentIdx,
+        active: idx === currentIdx
+      }));
     }
   },
 
@@ -391,6 +415,7 @@ export default {
         this.contactMeta = null;
         this.publisherStats = null;
         this.assigneeStats = null;
+        uni.showToast({ title: "任务加载失败", icon: "none" });
       } finally {
         this.loading = false;
       }
@@ -658,7 +683,7 @@ export default {
         const ok = await updateTaskStatus(this.task.id, status, this.myUserId);
         if (!ok) {
           uni.showToast({
-            title: "操作失败，请刷新后重试",
+            title: "操作失败，可能无权限或状态过期",
             icon: "none"
           });
           return;
@@ -717,12 +742,24 @@ export default {
 }
 
 .reward-pill {
-  color: #e74a62;
-  font-size: 24rpx;
-  font-weight: 700;
-  background: #ffedf1;
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+  background: linear-gradient(135deg, #fff0f2, #ffedf1);
   border-radius: 999rpx;
-  padding: 8rpx 14rpx;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid rgba(231, 74, 98, 0.08);
+}
+.reward-label {
+  color: #a55b6a;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+.reward-value {
+  color: #e74a62;
+  font-size: 28rpx;
+  font-weight: 800;
+  letter-spacing: -0.5rpx;
 }
 
 .status-row {
@@ -790,17 +827,80 @@ export default {
   gap: 10rpx;
 }
 
+.progress-track {
+  margin-top: 20rpx;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 4rpx;
+}
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  flex: 1;
+  position: relative;
+}
+.step-dot {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #eef2fb;
+  color: #8a95ac;
+  font-size: 20rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  border: 2rpx solid #e0e8f5;
+  transition: all 0.3s ease;
+}
+.step-label {
+  font-size: 20rpx;
+  color: #8a95ac;
+  text-align: center;
+}
+.step-done .step-dot {
+  background: linear-gradient(135deg, #13c2a3, #24b987);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 3rpx 10rpx rgba(19, 194, 163, 0.3);
+}
+.step-done .step-label {
+  color: #2ea269;
+  font-weight: 500;
+}
+.step-active .step-dot {
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 3rpx 10rpx rgba(47, 107, 255, 0.3);
+  animation: anim-pulse 2s ease-in-out infinite;
+}
+.step-active .step-label {
+  color: #2f6bff;
+  font-weight: 600;
+}
+
 .actions {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 16rpx 20rpx 24rpx;
+  padding: 16rpx 20rpx calc(24rpx + env(safe-area-inset-bottom));
   display: flex;
   flex-wrap: wrap;
   gap: 10rpx;
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1rpx solid #e8edf5;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24rpx);
+  -webkit-backdrop-filter: blur(24rpx);
+  border-top: 1rpx solid rgba(228, 235, 251, 0.6);
+  box-shadow: 0 -4rpx 20rpx rgba(31, 38, 66, 0.05);
+  z-index: 100;
 }
 
 .action-btn {

@@ -55,7 +55,7 @@
       </view>
     </view>
 
-    <view class="section-head anim-fade-in anim-d4">
+    <view class="section-head anim-stagger-fade anim-d6">
       <text class="section-title">快捷入口</text>
       <text class="section-badge">{{ quickEntries.length }}个模块</text>
     </view>
@@ -64,7 +64,7 @@
       <view
         v-for="(item, idx) in quickEntries"
         :key="item.key"
-        :class="['entry', 'card-press', 'ripple-wrap', 'anim-scale-in', item.tone, idx < 12 ? ('anim-d' + (idx + 1)) : '']"
+        :class="['entry', 'card-press', 'ripple-wrap', 'anim-stagger-fade', idx < 12 ? ('anim-d' + (idx + 7)) : '']"
         @tap="handleQuickEntry(item.key)"
       >
         <view class="entry-orb" :class="item.tone + '-orb'"></view>
@@ -133,6 +133,8 @@ export default {
 
   data() {
     return {
+      showSplash: false,
+      splashFadingOut: false,
       loading: false,
       recommendList: [],
       showConfetti: false,
@@ -256,6 +258,24 @@ export default {
 
     isLogin() {
       return this.userStore.isLogin;
+    }
+  },
+
+  onLoad() {
+    const app = getApp();
+    if (app && !app.globalData.hasShownSplash) {
+      this.showSplash = true;
+      app.globalData.hasShownSplash = true;
+
+      // 1.5秒后开始渐隐升起
+      setTimeout(() => {
+        this.splashFadingOut = true;
+      }, 1500);
+
+      // 2秒后完全移除 DOM
+      setTimeout(() => {
+        this.showSplash = false;
+      }, 2000);
     }
   },
 
@@ -753,5 +773,71 @@ export default {
   0%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
   60%  { opacity: 1; }
   100% { opacity: 0; transform: translateY(600rpx) rotate(360deg) scale(0.5); }
+}
+
+/* ---- Splash Screen 开屏动画 ---- */
+.splash-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.splash-fade-out {
+  opacity: 0;
+  transform: scale(1.05) translateY(-40rpx);
+  pointer-events: none;
+}
+.splash-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.splash-icons {
+  display: flex;
+  gap: 30rpx;
+  margin-bottom: 50rpx;
+}
+.splash-icon {
+  width: 120rpx;
+  height: 120rpx;
+  background: linear-gradient(135deg, #f2f5fc, #ffffff);
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60rpx;
+  box-shadow: 0 16rpx 40rpx rgba(47, 107, 255, 0.1);
+  border: 2rpx solid rgba(255, 255, 255, 0.8);
+}
+.splash-text-wrap {
+  text-align: center;
+}
+.splash-title {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #1a2540;
+  letter-spacing: 2rpx;
+}
+.splash-sub {
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: #5a6a88;
+  letter-spacing: 1rpx;
+}
+.splash-blur {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500rpx; height: 500rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.08), transparent 70%);
+  filter: blur(60rpx);
+  z-index: 1;
 }
 </style>

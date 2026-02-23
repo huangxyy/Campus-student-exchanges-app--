@@ -154,17 +154,27 @@ async function getMyWantsFromCloud(userId) {
   return (res.data || []).map((item) => normalizeWant(item));
 }
 
-async function closeWantInCloud(wantId) {
+async function closeWantInCloud(wantId, userId) {
   const collection = getWantCollection();
   if (!collection) {
     throw new Error("Cloud database is unavailable");
   }
 
-  const res = await collection.doc(wantId).update({
+  const res = await collection.doc(wantId).get().catch(() => null);
+  if (!res || !res.data) {
+    return false;
+  }
+
+  if (res.data.publisherId && res.data.publisherId !== userId) {
+    console.warn("[WantService] closeWantInCloud: permission denied");
+    return false;
+  }
+
+  const updateRes = await collection.doc(wantId).update({
     data: { status: "closed", updatedAt: Date.now() }
   }).catch(() => null);
 
-  return !!(res && res.stats && res.stats.updated > 0);
+  return !!(updateRes && updateRes.stats && updateRes.stats.updated > 0);
 }
 
 async function getSubscriptionFromCloud(userId) {
@@ -321,7 +331,7 @@ export async function closeWant(wantId) {
     return false;
   }
 
-  const cloudResult = await closeWantInCloud(wantId).catch(() => null);
+  const cloudResult = await closeWantInCloud(wantId, userId).catch(() => null);
   if (typeof cloudResult === "boolean") {
     return cloudResult;
   }

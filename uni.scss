@@ -1,20 +1,42 @@
 @import "uview-plus/theme.scss";
 
-$app-bg: #f6f7fb;
-$primary-color: #2f6bff;
-$primary-strong: #2459d6;
-$primary-soft: #e8efff;
-$success-color: #13c2a3;
-$warning-color: #fa8c16;
-$danger-color: #e25269;
-$text-primary: #1f2430;
-$text-secondary: #606b80;
-$text-placeholder: #a7afbe;
-$line-color: #e9ecf3;
+// uview-plus theme overrides
+$u-primary: #2f6bff;
+$u-primary-dark: #2459d6;
+$u-primary-light: #e8efff;
+$u-success: #13c2a3;
+$u-warning: #fa8c16;
+$u-error: #e25269;
+$u-main-color: #1f2430;
+$u-content-color: #606b80;
+$u-tips-color: #a7afbe;
+$u-border-color: #e9ecf3;
+$u-bg-color: #f6f7fb;
+
+// app semantic tokens (single source for custom pages/components)
+$app-bg: $u-bg-color;
+$primary-color: $u-primary;
+$primary-strong: $u-primary-dark;
+$primary-soft: $u-primary-light;
+$success-color: $u-success;
+$warning-color: $u-warning;
+$danger-color: $u-error;
+$text-primary: $u-main-color;
+$text-secondary: $u-content-color;
+$text-placeholder: $u-tips-color;
+$line-color: $u-border-color;
 $card-bg: #ffffff;
 $radius-card: 24rpx;
+$radius-lg: 28rpx;
 $radius-pill: 999rpx;
 $shadow-soft: 0 10rpx 24rpx rgba(24, 37, 66, 0.08);
+$shadow-card: 0 4rpx 16rpx rgba(26, 38, 66, 0.04), 0 12rpx 36rpx rgba(26, 38, 66, 0.06);
+$shadow-float: 0 8rpx 24rpx rgba(47, 107, 255, 0.12), 0 2rpx 8rpx rgba(26, 38, 66, 0.04);
+
+$page-bg: radial-gradient(circle at 8% 4%, rgba(47, 107, 255, 0.10), rgba(47, 107, 255, 0) 45%),
+  radial-gradient(circle at 92% 18%, rgba(19, 194, 163, 0.08), rgba(19, 194, 163, 0) 40%),
+  radial-gradient(circle at 50% 70%, rgba(124, 58, 237, 0.04), rgba(124, 58, 237, 0) 40%),
+  #f2f5fc;
 
 // 注意：以下 mixin 可在组件中 @include 使用，避免在 uni.scss 中直接定义 class
 // 否则每个组件编译后都会重复输出这些样式

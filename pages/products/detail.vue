@@ -3,13 +3,18 @@
     <view v-if="loading" class="loading">加载商品详情中...</view>
 
     <template v-else-if="product">
-      <swiper class="banner" circular autoplay :indicator-dots="true" :interval="3000" :duration="400">
-        <swiper-item v-for="(img, index) in imageList" :key="`${product._id}-${index}`">
-          <image class="banner-image" :src="img" mode="aspectFill" @tap="previewImage(index)" />
-        </swiper-item>
-      </swiper>
+      <view class="banner-wrap anim-slide-down">
+        <swiper class="banner" circular autoplay :indicator-dots="false" :interval="3000" :duration="400" @change="onSwiperChange">
+          <swiper-item v-for="(img, index) in imageList" :key="`${product._id}-${index}`">
+            <image class="banner-image" :src="img" mode="aspectFill" @tap="previewImage(index)" />
+          </swiper-item>
+        </swiper>
+        <view class="img-counter glass">
+          <text class="counter-text">{{ currentImageIndex + 1 }} / {{ imageList.length }}</text>
+        </view>
+      </view>
 
-      <view class="main card">
+      <view class="main card anim-stagger-fade anim-d1">
         <view class="title-row">
           <view class="title">{{ product.title }}</view>
           <text class="meta-views">{{ product.views || 0 }} 浏览</text>
@@ -36,30 +41,40 @@
         </view>
       </view>
 
-      <view class="seller card" @tap="goSellerProfile">
-        <image class="avatar" :src="sellerAvatar" mode="aspectFill" />
+      <view class="seller card anim-stagger-fade anim-d2" @tap="goSellerProfile">
+        <view class="seller-avatar-wrap">
+          <view class="seller-avatar-ring">
+            <image class="avatar" :src="sellerAvatar" mode="aspectFill" />
+          </view>
+          <view v-if="product.certified" class="seller-verified">✓</view>
+        </view>
         <view class="seller-info">
           <view class="name-row">
             <view class="name">{{ product.userName }}</view>
-            <text v-if="product.certified" class="badge cert">已认证</text>
             <text v-if="product.collegeTag" class="badge college">{{ product.collegeTag }}</text>
           </view>
-          <view class="meta">信用分 {{ product.rating || 5.0 }} · 校内交易</view>
+          <view class="meta">
+            <text class="meta-stars">{{ ratingStars }}</text>
+            <text class="meta-sep">·</text>
+            信用分 {{ product.rating || 5.0 }}
+            <text class="meta-sep">·</text>
+            校内交易
+          </view>
           <view class="seller-tags">
-            <text class="ui-chip ui-chip-success">当面交易更安全</text>
-            <text class="ui-chip ui-chip-muted">点击查看主页 ›</text>
+            <text class="ui-chip ui-chip-success">🛡️ 当面交易更安全</text>
+            <text class="ui-chip ui-chip-muted">查看主页 →</text>
           </view>
         </view>
       </view>
 
-      <view class="actions">
-        <button :class="['ui-btn', favorited ? 'ui-btn-secondary active-btn' : 'ui-btn-ghost']" @tap="collect">
+      <view class="actions anim-slide-up anim-d3">
+        <button :class="['ui-btn', 'btn-bounce', favorited ? 'ui-btn-secondary active-btn' : 'ui-btn-ghost']" @tap="collect">
           {{ favorited ? "已收藏" : "收藏" }}
         </button>
-        <button class="ui-btn ui-btn-ghost" @tap="reportProduct">举报</button>
+        <button class="ui-btn ui-btn-ghost btn-bounce" @tap="reportProduct">举报</button>
         <template v-if="product.status === 'available'">
-          <button class="ui-btn ui-btn-secondary" @tap="contact">联系卖家</button>
-          <button class="ui-btn ui-btn-primary" @tap="buyNow">立即下单</button>
+          <button class="ui-btn ui-btn-secondary btn-bounce" @tap="contact">联系卖家</button>
+          <button class="ui-btn ui-btn-primary btn-bounce" @tap="buyNow">立即下单</button>
         </template>
         <template v-else>
           <button class="ui-btn ui-btn-muted" disabled>{{ productStatusText }}</button>
@@ -99,7 +114,8 @@ export default {
       loading: false,
       product: null,
       favorited: false,
-      descExpanded: false
+      descExpanded: false,
+      currentImageIndex: 0
     };
   },
 
@@ -152,6 +168,12 @@ export default {
         unavailable: "已下架"
       };
       return statusMap[this.product?.status] || "不可购买";
+    },
+
+    ratingStars() {
+      const rating = Number(this.product?.rating || 5);
+      const full = Math.min(5, Math.round(rating));
+      return "★".repeat(full);
     }
   },
 
@@ -173,6 +195,7 @@ export default {
       } catch (error) {
         this.product = null;
         this.favorited = false;
+        uni.showToast({ title: "商品加载失败", icon: "none" });
       } finally {
         this.loading = false;
       }
@@ -339,17 +362,19 @@ export default {
 
     goBackToList() {
       const pages = getCurrentPages();
-      if (pages.length > 1) {
+      if (pages && pages.length > 1) {
         uni.navigateBack();
       } else {
-        uni.switchTab({
-          url: "/pages/index/index"
-        });
+        uni.switchTab({ url: "/pages/index/index" });
       }
     },
 
     toggleDescription() {
       this.descExpanded = !this.descExpanded;
+    },
+
+    onSwiperChange(e) {
+      this.currentImageIndex = e.detail.current || 0;
     },
 
     previewImage(index) {
@@ -379,10 +404,10 @@ export default {
   font-size: 26rpx;
 }
 
-.banner {
+.banner-wrap {
+  position: relative;
   width: calc(100% - 32rpx);
   margin: 16rpx;
-  height: 580rpx;
   border-radius: 28rpx;
   overflow: hidden;
   border: 1rpx solid rgba(228, 235, 251, 0.6);
@@ -391,9 +416,30 @@ export default {
     0 20rpx 48rpx rgba(26, 39, 68, 0.08);
 }
 
+.banner {
+  width: 100%;
+  height: 580rpx;
+}
+
 .banner-image {
   width: 100%;
   height: 100%;
+}
+
+.img-counter {
+  position: absolute;
+  right: 20rpx;
+  bottom: 20rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 22rpx;
+  z-index: 10;
+}
+.counter-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #2b3a5e;
 }
 
 .main {
@@ -514,23 +560,62 @@ export default {
   align-items: center;
   gap: 18rpx;
   border-radius: 26rpx;
-  background: #ffffff;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 255, 0.95));
   border: 1rpx solid rgba(228, 235, 251, 0.7);
   box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
 }
 
-.avatar {
-  width: 90rpx;
-  height: 90rpx;
+.seller-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.seller-avatar-ring {
+  width: 94rpx;
+  height: 94rpx;
   border-radius: 50%;
-  border: 3rpx solid #eef2fb;
-  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.1);
+  padding: 3rpx;
+  background: linear-gradient(135deg, #2f6bff, #13c2a3);
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.15);
+}
+.seller-verified {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2f6bff, #2459d6);
+  color: #fff;
+  font-size: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #fff;
+  box-shadow: 0 2rpx 6rpx rgba(47, 107, 255, 0.3);
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2rpx solid #fff;
+  display: block;
 }
 
 .name {
   color: #1a2540;
   font-size: 30rpx;
   font-weight: 700;
+}
+
+.meta-stars {
+  color: #f5a623;
+  font-size: 22rpx;
+  letter-spacing: 1rpx;
+}
+.meta-sep {
+  margin: 0 4rpx;
+  color: #c8d0e0;
 }
 
 .name-row {
@@ -578,10 +663,11 @@ export default {
   gap: 14rpx;
   padding: 18rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20rpx);
-  -webkit-backdrop-filter: blur(20rpx);
+  backdrop-filter: blur(24rpx);
+  -webkit-backdrop-filter: blur(24rpx);
   border-top: 1rpx solid rgba(228, 235, 251, 0.6);
   box-shadow: 0 -4rpx 20rpx rgba(31, 38, 66, 0.05);
+  z-index: 100;
 }
 
 .ui-btn {

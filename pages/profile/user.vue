@@ -3,10 +3,15 @@
     <view v-if="loading" class="loading">加载用户信息...</view>
 
     <template v-else>
-      <view class="hero card anim-slide-down">
+      <view class="hero glass-strong anim-slide-down" style="border-radius: 28rpx;">
+        <view class="hero-deco"></view>
         <view class="hero-top">
-          <image v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" mode="aspectFill" />
-          <view v-else class="avatar-placeholder">{{ (userInfo.nickName || '?')[0] }}</view>
+          <view class="avatar-container">
+            <view class="avatar-ring-outer">
+              <image v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" mode="aspectFill" />
+              <view v-else class="avatar-placeholder">{{ (userInfo.nickName || '?')[0] }}</view>
+            </view>
+          </view>
           <view class="hero-info">
             <view class="hero-name">{{ userInfo.nickName || '校园用户' }}</view>
             <view class="hero-id">ID: {{ userId.slice(-8) }}</view>
@@ -14,25 +19,21 @@
         </view>
         <view v-if="trustScore > 0" class="trust-row">
           <text class="trust-icon">{{ trustLevel.icon || '⭐' }}</text>
-          <text class="trust-text" :style="{ color: trustLevel.color }">{{ trustLevel.level }} {{ trustScore }}分</text>
+          <view class="trust-detail">
+            <view class="trust-top">
+              <text class="trust-text" :style="{ color: trustLevel.color }">{{ trustLevel.level }}</text>
+              <text class="trust-score">{{ trustScore }}分</text>
+            </view>
+            <view class="trust-bar">
+              <view class="trust-fill" :style="{ width: Math.min(100, trustScore) + '%', background: trustLevel.color }"></view>
+            </view>
+          </view>
           <text v-if="taskStats && taskStats.helperTag" class="helper-tag">{{ taskStats.helperTag }}</text>
         </view>
         <view class="stats-row">
-          <view class="stat-block">
-            <view class="stat-num">{{ stats.productCount || 0 }}</view>
-            <view class="stat-label">商品</view>
-          </view>
-          <view class="stat-block">
-            <view class="stat-num">{{ stats.orderCount || 0 }}</view>
-            <view class="stat-label">完成</view>
-          </view>
-          <view class="stat-block">
-            <view class="stat-num">{{ stats.taskCount || 0 }}</view>
-            <view class="stat-label">任务</view>
-          </view>
-          <view class="stat-block">
-            <view class="stat-num">{{ stats.feedCount || 0 }}</view>
-            <view class="stat-label">动态</view>
+          <view class="stat-block anim-count" v-for="stat in statItems" :key="stat.label">
+            <view class="stat-num num-animate">{{ stat.value }}</view>
+            <view class="stat-label">{{ stat.label }}</view>
           </view>
         </view>
       </view>
@@ -87,7 +88,15 @@ export default {
   computed: {
     userStore() { return useUserStore(); },
     myUserId() { return this.userStore.profile?.userId || ""; },
-    isSelf() { return this.userId === this.myUserId; }
+    isSelf() { return this.userId === this.myUserId; },
+    statItems() {
+      return [
+        { value: this.stats.productCount || 0, label: "商品" },
+        { value: this.stats.orderCount || 0, label: "完成" },
+        { value: this.stats.taskCount || 0, label: "任务" },
+        { value: this.stats.feedCount || 0, label: "动态" }
+      ];
+    }
   },
 
   onLoad(query) {
@@ -100,24 +109,16 @@ export default {
       if (!this.userId) { return; }
       this.loading = true;
       try {
-        // 尝试云端加载用户信息
-        const db = getCloudDatabase();
-        if (db) {
-          const userRes = await db.collection("users").where({ userId: this.userId }).limit(1).get().catch(() => null);
-          if (userRes && userRes.data && userRes.data[0]) {
-            this.userInfo = userRes.data[0];
-          }
-
-          const feedRes = await db.collection("feeds").where({ authorId: this.userId, status: "active" }).orderBy("createdAt", "desc").limit(5).get().catch(() => null);
-          this.feeds = (feedRes && feedRes.data) || [];
-        }
-
-        // 使用标准 service 加载商品和任务（自动支持本地回退）
-        const [productRes, taskStats] = await Promise.all([
+        const [userInfo, feedList, productRes, taskStats, trustRecord] = await Promise.all([
+          this.fetchUserInfo(),
+          this.fetchUserFeeds(),
           queryProductsByUser(this.userId, { page: 1, pageSize: 5 }).catch(() => ({ list: [], total: 0 })),
-          getTaskUserStats(this.userId).catch(() => null)
+          getTaskUserStats(this.userId).catch(() => null),
+          getTrustScore(this.userId).catch(() => null)
         ]);
 
+        if (userInfo) { this.userInfo = userInfo; }
+        this.feeds = feedList;
         this.products = (productRes.list || []).filter((p) => p.status === "available");
         this.taskStats = taskStats;
 
@@ -125,25 +126,20 @@ export default {
           productCount: productRes.total || 0,
           orderCount: taskStats ? taskStats.publishedCompletedCount + taskStats.acceptedCompletedCount : 0,
           taskCount: taskStats ? taskStats.publishedCount + taskStats.acceptedCount : 0,
-          feedCount: this.feeds.length
+          feedCount: feedList.length
         };
 
-        // 加载信用分
-        const trustRecord = await getTrustScore(this.userId).catch(() => null);
         if (trustRecord) {
           this.trustScore = trustRecord.score;
           this.trustLevel = getTrustLevel(trustRecord.score);
         }
 
-        // 如果自己的页面，用本地 profile 填充
-        if (this.isSelf && this.userStore.profile) {
-          if (!this.userInfo.nickName) {
-            this.userInfo = {
-              nickName: this.userStore.profile.nickName || "校园用户",
-              avatar: this.userStore.profile.avatar || "",
-              userId: this.userId
-            };
-          }
+        if (this.isSelf && this.userStore.profile && !this.userInfo.nickName) {
+          this.userInfo = {
+            nickName: this.userStore.profile.nickName || "校园用户",
+            avatar: this.userStore.profile.avatar || "",
+            userId: this.userId
+          };
         }
 
         if (!this.userInfo.nickName) {
@@ -152,6 +148,25 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+
+    async fetchUserInfo() {
+      const db = getCloudDatabase();
+      if (!db) { return null; }
+      const res = await db.collection("users").where({ userId: this.userId }).limit(1).get().catch(() => null);
+      return (res && res.data && res.data[0]) || null;
+    },
+
+    async fetchUserFeeds() {
+      const db = getCloudDatabase();
+      if (!db) { return []; }
+      const res = await db.collection("feeds")
+        .where({ authorId: this.userId, status: "active" })
+        .orderBy("createdAt", "desc")
+        .limit(5)
+        .get()
+        .catch(() => null);
+      return (res && res.data) || [];
     },
 
     goProduct(id) {
@@ -208,49 +223,112 @@ export default {
 
 <style lang="scss" scoped>
 .user-page {
+  position: relative;
   padding: 24rpx; padding-bottom: 160rpx;
-  background: radial-gradient(circle at 50% 0%, rgba(47, 107, 255, 0.08), rgba(47, 107, 255, 0) 60%), #f2f5fb;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
 }
 .loading { margin-top: 100rpx; text-align: center; color: #8b95ab; font-size: 25rpx; }
-.hero { padding: 26rpx; }
-.hero-top { display: flex; align-items: center; gap: 18rpx; }
-.avatar { width: 100rpx; height: 100rpx; border-radius: 50%; flex-shrink: 0; }
+
+.hero {
+  position: relative;
+  padding: 26rpx;
+  overflow: hidden;
+}
+.hero-deco {
+  position: absolute;
+  top: -60rpx; right: -40rpx;
+  width: 200rpx; height: 200rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.1), transparent);
+  pointer-events: none;
+}
+.hero-top { position: relative; display: flex; align-items: center; gap: 18rpx; }
+.avatar-container { flex-shrink: 0; }
+.avatar-ring-outer {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  padding: 3rpx;
+  background: linear-gradient(135deg, #2f6bff, #13c2a3);
+  box-shadow: 0 4rpx 16rpx rgba(47, 107, 255, 0.2);
+}
+.avatar {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  border: 2rpx solid #fff;
+  display: block;
+}
 .avatar-placeholder {
-  width: 100rpx; height: 100rpx; border-radius: 50%; background: #dfe6f5; color: #2f6bff;
-  display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 700; flex-shrink: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #dfe6f5, #e8eef8);
+  color: #2f6bff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40rpx; font-weight: 700;
+  border: 2rpx solid #fff;
 }
 .hero-info { flex: 1; }
-.hero-name { color: #1f2430; font-size: 32rpx; font-weight: 700; }
+.hero-name { color: #1f2430; font-size: 32rpx; font-weight: 800; }
 .hero-id { color: #8a93a7; font-size: 22rpx; margin-top: 4rpx; }
-.stats-row { margin-top: 20rpx; display: flex; justify-content: space-around; }
+
+.stats-row {
+  margin-top: 20rpx;
+  display: flex;
+  justify-content: space-around;
+  padding: 16rpx 0 6rpx;
+  border-top: 1rpx solid rgba(228, 235, 251, 0.5);
+}
 .stat-block { text-align: center; }
 .stat-num { color: #1f2430; font-size: 30rpx; font-weight: 700; }
 .stat-label { color: #8a93a7; font-size: 20rpx; margin-top: 4rpx; }
+
 .section { margin-top: 14rpx; padding: 20rpx; }
 .section-title { color: #25324a; font-size: 27rpx; font-weight: 600; margin-bottom: 14rpx; }
-.item-row { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f8; }
+.item-row { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; border-bottom: 1rpx solid rgba(228, 235, 251, 0.4); }
 .item-row:last-child { border-bottom: none; }
 .item-title { flex: 1; color: #2b3345; font-size: 25rpx; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-price { color: #e74a62; font-size: 24rpx; font-weight: 700; flex-shrink: 0; margin-left: 12rpx; }
+
 .trust-row {
-  margin-top: 14rpx; display: flex; align-items: center; gap: 10rpx;
-  padding: 10rpx 16rpx; background: rgba(255, 255, 255, 0.7); border-radius: 12rpx;
+  margin-top: 14rpx; display: flex; align-items: center; gap: 12rpx;
+  padding: 14rpx 18rpx;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.7), rgba(248, 250, 255, 0.5));
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
 }
-.trust-icon { font-size: 24rpx; }
-.trust-text { font-size: 23rpx; font-weight: 600; }
+.trust-icon { font-size: 28rpx; flex-shrink: 0; }
+.trust-detail { flex: 1; }
+.trust-top { display: flex; align-items: baseline; gap: 6rpx; margin-bottom: 6rpx; }
+.trust-text { font-size: 24rpx; font-weight: 700; }
+.trust-score { font-size: 20rpx; color: #8a95ac; }
+.trust-bar {
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: rgba(228, 235, 251, 0.6);
+  overflow: hidden;
+}
+.trust-fill {
+  height: 100%;
+  border-radius: 3rpx;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 .helper-tag {
   font-size: 20rpx; background: #eaf8f2; color: #23885f; border-radius: 999rpx;
-  padding: 4rpx 12rpx;
+  padding: 6rpx 14rpx; font-weight: 500; flex-shrink: 0;
 }
+
 .actions { margin-top: 20rpx; display: flex; gap: 12rpx; }
 .chat-btn {
   flex: 1; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; border: none;
   background: linear-gradient(135deg, #2f6bff, #2459d6); color: #fff; font-size: 30rpx; font-weight: 600;
+  box-shadow: 0 6rpx 20rpx rgba(47, 107, 255, 0.3);
 }
 .chat-btn::after { border: none; }
 .report-btn {
   width: 180rpx; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; border: none;
-  background: #f4f5f8; color: #8a93a7; font-size: 26rpx;
+  background: rgba(238, 242, 251, 0.7); color: #8a93a7; font-size: 26rpx;
 }
 .report-btn::after { border: none; }
 </style>

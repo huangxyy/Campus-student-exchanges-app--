@@ -1,10 +1,22 @@
 <template>
   <view class="settings-page">
-    <view class="banner card anim-slide-down">
-      <view class="banner-title">设置</view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
     </view>
 
-    <view class="section card anim-slide-up anim-d1">
+    <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="banner-top">
+        <view>
+          <view class="banner-title">⚙️ 设置</view>
+          <view class="banner-desc">管理你的账户与偏好</view>
+        </view>
+        <view v-if="profile.avatar" class="banner-avatar">
+          <image :src="profile.avatar" class="banner-avatar-img" mode="aspectFill" />
+        </view>
+      </view>
+    </view>
+
+    <view class="section glass-strong anim-slide-up anim-d1" style="border-radius: 24rpx;">
       <view class="section-title">账户</view>
       <view class="setting-item" @tap="editNickname">
         <text class="setting-label">昵称</text>
@@ -29,7 +41,7 @@
       </view>
     </view>
 
-    <view class="section card anim-slide-up anim-d2">
+    <view class="section glass-strong anim-slide-up anim-d2" style="border-radius: 24rpx;">
       <view class="section-title">快捷入口</view>
       <view class="setting-item" @tap="goTo('/pages/profile/my-products')">
         <text class="setting-label">我的商品</text><text class="arrow">›</text>
@@ -48,7 +60,7 @@
       </view>
     </view>
 
-    <view class="section card anim-slide-up anim-d3">
+    <view class="section glass-strong anim-slide-up anim-d3" style="border-radius: 24rpx;">
       <view class="section-title">通知与隐私</view>
       <view class="setting-item">
         <text class="setting-label">到货提醒</text>
@@ -60,7 +72,7 @@
       </view>
     </view>
 
-    <view class="section card anim-slide-up anim-d4">
+    <view class="section glass-strong anim-slide-up anim-d4" style="border-radius: 24rpx;">
       <view class="section-title">关于</view>
       <view class="setting-item">
         <text class="setting-label">版本号</text>
@@ -80,7 +92,10 @@
       </view>
     </view>
 
-    <button class="logout-btn anim-slide-up anim-d5" @tap="handleLogout">退出登录</button>
+    <button class="logout-btn btn-bounce anim-slide-up anim-d5" @tap="handleLogout">
+      <text class="logout-icon">⏻</text>
+      退出登录
+    </button>
   </view>
 </template>
 
@@ -100,8 +115,21 @@ export default {
     profile() { return this.userStore.profile || {}; }
   },
 
+  onShow() {
+    this.loadSwitchStates();
+  },
+
+  watch: {
+    notifyEnabled(val) { this.saveSwitchState("cm_notify_enabled", val); },
+    showOnline(val) { this.saveSwitchState("cm_show_online", val); }
+  },
+
   methods: {
     goTo(url) {
+      if (!this.userStore.isLogin) {
+        uni.navigateTo({ url: "/pages/login/login" });
+        return;
+      }
       uni.navigateTo({ url });
     },
 
@@ -171,6 +199,20 @@ export default {
       });
     },
 
+    loadSwitchStates() {
+      try {
+        const n = uni.getStorageSync("cm_notify_enabled");
+        const o = uni.getStorageSync("cm_show_online");
+        if (n !== "") { this.notifyEnabled = n !== false; }
+        if (o !== "") { this.showOnline = o !== false; }
+      } catch { /* use defaults */ }
+    },
+
+    saveSwitchState(key, val) {
+      try { uni.setStorageSync(key, val); }
+      catch { /* noop */ }
+    },
+
     clearCache() {
       uni.showModal({
         title: "清除缓存",
@@ -178,14 +220,19 @@ export default {
         success: (res) => {
           if (!res.confirm) { return; }
           try {
-            // 保留登录信息，只清除业务缓存
-            const authUser = uni.getStorageSync("cm_user");
-            const authToken = uni.getStorageSync("cm_token");
+            const preserveKeys = ["cm_user", "cm_token", "cm_notify_enabled", "cm_show_online"];
+            const preserved = {};
+            preserveKeys.forEach((k) => {
+              try { const v = uni.getStorageSync(k); if (v !== "") { preserved[k] = v; } }
+              catch { /* skip */ }
+            });
             uni.clearStorageSync();
-            if (authUser) { uni.setStorageSync("cm_user", authUser); }
-            if (authToken) { uni.setStorageSync("cm_token", authToken); }
-          } catch (error) {
-            // ignore
+            Object.entries(preserved).forEach(([k, v]) => {
+              try { uni.setStorageSync(k, v); }
+              catch { /* skip */ }
+            });
+          } catch {
+            /* fallback: do nothing to avoid losing auth */
           }
           uni.showToast({ title: "缓存已清除", icon: "success" });
         }
@@ -209,26 +256,78 @@ export default {
 
 <style lang="scss" scoped>
 .settings-page {
+  position: relative;
   padding: 24rpx; padding-bottom: 160rpx;
-  background: #f2f5fb;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
 }
-.banner { padding: 22rpx; }
-.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 700; }
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.4;
+}
+.orb-1 {
+  width: 180rpx; height: 180rpx;
+  top: -30rpx; right: -40rpx;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25), transparent 70%);
+}
+
+.banner {
+  position: relative;
+  padding: 24rpx;
+  margin-bottom: 4rpx;
+  overflow: hidden;
+}
+.banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 800; }
+.banner-desc { margin-top: 6rpx; color: #5a6a88; font-size: 24rpx; }
+.banner-avatar {
+  width: 72rpx; height: 72rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3rpx solid rgba(47, 107, 255, 0.15);
+  box-shadow: 0 4rpx 12rpx rgba(47, 107, 255, 0.12);
+  flex-shrink: 0;
+}
+.banner-avatar-img { width: 100%; height: 100%; }
+
 .section { margin-top: 14rpx; padding: 20rpx; }
 .section-title { color: #25324a; font-size: 25rpx; font-weight: 600; margin-bottom: 10rpx; }
 .setting-item {
   display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0;
-  border-bottom: 1rpx solid #f0f2f8;
+  border-bottom: 1rpx solid rgba(228, 235, 251, 0.5);
+  transition: background 0.15s ease;
 }
+.setting-item:active { background: rgba(47, 107, 255, 0.03); }
 .setting-item:last-child { border-bottom: none; }
 .setting-label { color: #2b3345; font-size: 26rpx; flex: 1; }
 .setting-value { color: #8a93a7; font-size: 24rpx; }
-.arrow { color: #c0c8d8; font-size: 32rpx; margin-left: 10rpx; }
-.avatar-mini { width: 52rpx; height: 52rpx; border-radius: 50%; }
+.arrow { color: #c0c8d8; font-size: 32rpx; margin-left: 10rpx; transition: transform 0.2s ease; }
+.setting-item:active .arrow { transform: translateX(4rpx); }
+.avatar-mini { width: 52rpx; height: 52rpx; border-radius: 50%; border: 2rpx solid rgba(47, 107, 255, 0.1); }
+
 .logout-btn {
-  margin-top: 30rpx; width: 100%; height: 88rpx; line-height: 88rpx;
-  border-radius: 44rpx; border: none; background: #ffeef1; color: #e74a62;
+  margin-top: 30rpx; width: 100%; height: 88rpx;
+  border-radius: 44rpx; border: none;
+  background: linear-gradient(135deg, #ffeef1, #ffe8ec);
+  color: #e74a62;
   font-size: 28rpx; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 8rpx;
+  box-shadow: 0 4rpx 16rpx rgba(231, 74, 98, 0.1);
 }
 .logout-btn::after { border: none; }
+.logout-icon { font-size: 26rpx; }
 </style>

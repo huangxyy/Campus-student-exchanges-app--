@@ -467,7 +467,7 @@ async function sendMessageToCloud(currentUserId, conversationId, { type, content
   });
 
   return {
-    id: `msg-${now}`,
+    id: generateId("msg"),
     sender: "me",
     type,
     content: preview || content,
@@ -711,7 +711,7 @@ export async function createOrGetConversationByProduct(payload) {
 
   saveMessages(userId, conversation.id, [
     {
-      id: `msg-${now}`,
+      id: generateId("msg"),
       sender: "system",
       content: consultationText.system,
       createdAt: now

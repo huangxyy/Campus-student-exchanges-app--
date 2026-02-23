@@ -211,7 +211,8 @@ export default {
         return;
       }
 
-      if (!this.form.reward || Number(this.form.reward) <= 0) {
+      const rewardNum = Number(this.form.reward);
+      if (!this.form.reward || Number.isNaN(rewardNum) || rewardNum <= 0) {
         uni.showToast({ title: "请输入有效报酬", icon: "none" });
         return;
       }

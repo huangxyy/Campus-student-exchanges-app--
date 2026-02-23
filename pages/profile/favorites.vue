@@ -77,6 +77,7 @@ export default {
         this.list = await listFavorites();
       } catch (error) {
         this.list = [];
+        uni.showToast({ title: "加载收藏失败", icon: "none" });
       } finally {
         this.loading = false;
       }

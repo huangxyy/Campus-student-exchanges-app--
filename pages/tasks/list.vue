@@ -53,7 +53,7 @@
 
     <view v-if="newTaskCount > 0" class="new-task-tip anim-scale-in press-able" @tap="refreshNewTasks">有 {{ newTaskCount }} 条新任务，点击刷新</view>
 
-    <view :class="['task-card', 'card', 'card-press', 'anim-slide-up', `status-${task.status}`]" v-for="task in pagedList" :key="task.id" @tap="goTaskDetail(task.id)">
+    <view :class="['task-card', 'card', 'card-press', 'anim-stagger-fade', `status-${task.status}`, 'anim-d' + (index % 10 + 1)]" v-for="(task, index) in pagedList" :key="task.id" @tap="goTaskDetail(task.id)">
       <view class="head">
         <view class="task-title">{{ task.title }}</view>
         <view class="reward">赏金 ¥{{ task.reward }}</view>
@@ -291,9 +291,14 @@ export default {
     },
 
     applyRealtimeList(list) {
-      const newCount = this.latestKnownCreatedAt
-        ? list.filter((item) => Number(item.createdAt || 0) > this.latestKnownCreatedAt).length
-        : 0;
+      if (this.latestKnownCreatedAt === 0) {
+        // 第一次连接返回全量数据，不弹提示，只更新基准时间
+        this.taskList = list;
+        this.latestKnownCreatedAt = list.reduce((max, item) => Math.max(max, Number(item.createdAt || 0)), 0);
+        return;
+      }
+
+      const newCount = list.filter((item) => Number(item.createdAt || 0) > this.latestKnownCreatedAt).length;
       if (newCount > 0) {
         this.newTaskCount = newCount;
       }

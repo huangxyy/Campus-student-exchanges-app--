@@ -83,6 +83,10 @@ export default {
     this.loadList();
   },
 
+  onPullDownRefresh() {
+    this.loadList().finally(() => uni.stopPullDownRefresh());
+  },
+
   methods: {
     formatTime(ts) { return formatRelativeTime(ts); },
     getStatusText(status) { return getOrderStatusText(status); },

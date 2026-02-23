@@ -34,32 +34,47 @@
     </view>
 
     <view class="profile-form glass-strong anim-slide-up anim-d5" style="border-radius: 24rpx;">
-      <view class="form-title">设置你的个人信息</view>
+      <view class="form-header">
+        <view class="form-title">设置你的个人信息</view>
+        <view class="form-badge">可选</view>
+      </view>
       <view class="form-row">
         <text class="form-label">头像</text>
         <button class="avatar-choose" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
-          <image v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" mode="aspectFill" />
-          <text v-else class="avatar-placeholder">点击选择</text>
+          <view :class="['avatar-wrap', avatarUrl ? 'has-avatar' : '']">
+            <image v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" mode="aspectFill" />
+            <view v-else class="avatar-placeholder">
+              <text class="avatar-plus">+</text>
+            </view>
+            <view v-if="avatarUrl" class="avatar-check anim-bounce-in">✓</view>
+          </view>
         </button>
       </view>
       <view class="form-row">
         <text class="form-label">昵称</text>
-        <input
-          type="nickname"
-          v-model="nickName"
-          class="nickname-input"
-          placeholder="输入你的昵称"
-          @blur="onNicknameBlur"
-        />
+        <view class="nickname-wrap">
+          <input
+            type="nickname"
+            v-model="nickName"
+            class="nickname-input"
+            placeholder="输入你的昵称"
+            @blur="onNicknameBlur"
+            @focus="nickFocused = true"
+          />
+          <view v-if="nickName" class="nick-ok anim-scale-in">✓</view>
+        </view>
       </view>
     </view>
 
-    <button class="login-btn btn-bounce anim-scale-in anim-d6" :loading="loading" @tap="handleLogin">
+    <button :class="['login-btn', 'btn-bounce', 'anim-scale-in', 'anim-d6', (avatarUrl || nickName) ? 'login-btn-ready' : '']" :loading="loading" @tap="handleLogin">
       <text v-if="!loading" class="btn-icon">✦</text>
       {{ loading ? "登录中..." : "微信一键登录" }}
     </button>
 
-    <view class="tips anim-fade-in anim-d7">选择头像和昵称后点击登录，也可跳过直接登录</view>
+    <view class="tips anim-fade-in anim-d7">
+      <text class="tips-icon">💡</text>
+      选择头像和昵称后点击登录，也可跳过直接登录
+    </view>
 
     <view class="policy anim-fade-in anim-d8">
       登录代表你同意
@@ -80,6 +95,7 @@ export default {
       loading: false,
       nickName: "",
       avatarUrl: "",
+      nickFocused: false,
       features: [
         { icon: "🛒", title: "二手好物", desc: "校内面交更安心", tone: "ft-blue" },
         { icon: "📌", title: "任务互助", desc: "代取代课快速抢单", tone: "ft-amber" },
@@ -144,8 +160,9 @@ export default {
           });
         }, 1500);
       } catch (error) {
+        const msg = error?.message || "登录失败，请重试";
         uni.showToast({
-          title: "登录失败，请重试",
+          title: msg.length > 20 ? "登录失败，请重试" : msg,
           icon: "none"
         });
       } finally {
@@ -324,18 +341,35 @@ export default {
   padding: 24rpx;
 }
 
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
 .form-title {
   color: #1a2540;
   font-size: 26rpx;
   font-weight: 700;
-  margin-bottom: 18rpx;
+}
+
+.form-badge {
+  height: 36rpx;
+  line-height: 36rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(47, 107, 255, 0.06);
+  color: #6a8ec8;
+  font-size: 20rpx;
+  font-weight: 500;
 }
 
 .form-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14rpx 0;
+  padding: 16rpx 0;
   border-bottom: 1rpx solid rgba(228, 235, 251, 0.5);
 }
 
@@ -364,24 +398,67 @@ export default {
   border: none;
 }
 
-.avatar-preview {
-  width: 80rpx;
-  height: 80rpx;
+.avatar-wrap {
+  position: relative;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
-  border: 2rpx solid #e3eaf9;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.avatar-wrap:active {
+  transform: scale(0.92);
+}
+.avatar-wrap.has-avatar {
+  box-shadow: 0 4rpx 16rpx rgba(47, 107, 255, 0.2);
+}
+
+.avatar-preview {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(47, 107, 255, 0.15);
 }
 
 .avatar-placeholder {
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
-  background: #f0f4fc;
-  border: 2rpx dashed #c8d0e4;
+  background: linear-gradient(145deg, rgba(238, 242, 251, 0.8), rgba(224, 234, 250, 0.6));
+  border: 2rpx dashed rgba(47, 107, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20rpx;
-  color: #8a95ac;
+}
+
+.avatar-plus {
+  font-size: 36rpx;
+  color: #7a8eb5;
+  font-weight: 300;
+}
+
+.avatar-check {
+  position: absolute;
+  bottom: -2rpx;
+  right: -2rpx;
+  width: 30rpx;
+  height: 30rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #13c2a3, #24b987);
+  color: #fff;
+  font-size: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #fff;
+  box-shadow: 0 2rpx 6rpx rgba(19, 194, 163, 0.3);
+}
+
+.nickname-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  margin-left: 20rpx;
+  position: relative;
 }
 
 .nickname-input {
@@ -390,7 +467,20 @@ export default {
   height: 60rpx;
   font-size: 26rpx;
   color: #2b3345;
-  margin-left: 20rpx;
+}
+
+.nick-ok {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #13c2a3, #24b987);
+  color: #fff;
+  font-size: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8rpx;
+  flex-shrink: 0;
 }
 
 .login-btn {
@@ -407,6 +497,10 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.login-btn-ready {
+  box-shadow: 0 8rpx 28rpx rgba(47, 107, 255, 0.35), 0 0 0 4rpx rgba(47, 107, 255, 0.08);
 }
 .login-btn::after { border: none; }
 .btn-icon {
@@ -420,6 +514,13 @@ export default {
   text-align: center;
   color: #8a95ac;
   font-size: 23rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+}
+.tips-icon {
+  font-size: 22rpx;
 }
 
 .policy {

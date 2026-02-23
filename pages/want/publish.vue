@@ -1,11 +1,17 @@
 <template>
   <view class="publish-page">
-    <view class="banner card anim-slide-down">
-      <view class="banner-title">发布求购</view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+      <view class="orb orb-2 anim-float-x"></view>
+    </view>
+
+    <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="banner-deco"></view>
+      <view class="banner-title">🔍 发布求购</view>
       <view class="banner-desc">描述你想要的商品，让卖家主动联系你</view>
     </view>
 
-    <view class="form card anim-slide-up anim-d1">
+    <view class="form glass-strong anim-slide-up anim-d1" style="border-radius: 24rpx;">
       <view class="field">
         <text class="label">标题 *</text>
         <input v-model.trim="form.title" class="input" maxlength="40" placeholder="例如：求一本高数课本" />
@@ -100,6 +106,14 @@ export default {
 
       const priceMin = Number(this.form.priceMin || 0);
       const priceMax = Number(this.form.priceMax || 0);
+      if (Number.isNaN(priceMin) || Number.isNaN(priceMax)) {
+        uni.showToast({ title: "请输入有效的预算金额", icon: "none" });
+        return;
+      }
+      if (priceMin < 0 || priceMax < 0) {
+        uni.showToast({ title: "预算金额不能为负数", icon: "none" });
+        return;
+      }
       if (priceMax > 0 && priceMin > priceMax) {
         uni.showToast({ title: "最低价不能高于最高价", icon: "none" });
         return;
@@ -131,13 +145,53 @@ export default {
 
 <style lang="scss" scoped>
 .publish-page {
+  position: relative;
   padding: 24rpx;
   padding-bottom: 160rpx;
-  background: radial-gradient(circle at 50% 0%, rgba(255, 139, 62, 0.06), rgba(255, 139, 62, 0) 60%), #f2f5fb;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
 }
-.banner { padding: 22rpx; background: linear-gradient(140deg, rgba(255, 248, 238, 0.96), rgba(255, 252, 248, 0.98)), #ffffff; border: 1rpx solid #f5e3cc; }
-.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 700; }
-.banner-desc { margin-top: 8rpx; color: #647188; font-size: 24rpx; }
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.45;
+}
+.orb-1 {
+  width: 160rpx; height: 160rpx;
+  top: -20rpx; right: -30rpx;
+  background: radial-gradient(circle, rgba(255, 139, 62, 0.25), transparent 70%);
+}
+.orb-2 {
+  width: 120rpx; height: 120rpx;
+  top: 400rpx; left: -20rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.2), transparent 70%);
+}
+
+.banner {
+  position: relative;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+}
+.banner-deco {
+  position: absolute;
+  top: -50rpx; right: -30rpx;
+  width: 180rpx; height: 180rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 139, 62, 0.08), transparent);
+  pointer-events: none;
+}
+.banner-title { position: relative; color: #1f2636; font-size: 36rpx; font-weight: 800; }
+.banner-desc { margin-top: 8rpx; color: #5a6a88; font-size: 24rpx; }
 .form { margin-top: 14rpx; padding: 20rpx; }
 .field { margin-bottom: 22rpx; }
 .label { color: #33435f; font-size: 25rpx; font-weight: 600; display: block; margin-bottom: 10rpx; }
@@ -161,9 +215,11 @@ export default {
 }
 .price-sep { color: #8a93a7; font-size: 26rpx; }
 .submit-btn {
-  position: fixed; left: 24rpx; right: 24rpx; bottom: 40rpx; height: 88rpx; line-height: 88rpx;
+  position: fixed; left: 24rpx; right: 24rpx; bottom: calc(40rpx + env(safe-area-inset-bottom)); height: 88rpx; line-height: 88rpx;
   border-radius: 44rpx; border: none; background: linear-gradient(135deg, #ff8b3e, #f1712d);
-  color: #fff; font-size: 30rpx; font-weight: 600;
+  color: #fff; font-size: 30rpx; font-weight: 700;
+  box-shadow: 0 8rpx 24rpx rgba(241, 113, 45, 0.3);
+  z-index: 100;
 }
 .submit-btn::after { border: none; }
 </style>

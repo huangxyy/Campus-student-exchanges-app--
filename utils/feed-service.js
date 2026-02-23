@@ -5,6 +5,9 @@ import { addPoints } from "@/utils/points-service";
 
 const FEEDS_KEY = "cm_feeds";
 const COMMENTS_KEY = "cm_feed_comments";
+const DEFAULT_PAGE_SIZE = 20;
+
+let _publishLock = false;
 
 function normalizeFeed(item = {}) {
   return {
@@ -38,29 +41,18 @@ function normalizeComment(item = {}) {
   };
 }
 
-function readFeeds() {
-  try {
-    return uni.getStorageSync(FEEDS_KEY) || [];
-  } catch (error) {
-    return [];
-  }
+function readLocal(key) {
+  try { return uni.getStorageSync(key) || []; }
+  catch { return []; }
 }
-
-function saveFeeds(list) {
-  uni.setStorageSync(FEEDS_KEY, list);
+function saveLocal(key, list) {
+  try { uni.setStorageSync(key, list); }
+  catch { /* noop */ }
 }
-
-function readComments() {
-  try {
-    return uni.getStorageSync(COMMENTS_KEY) || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-function saveComments(list) {
-  uni.setStorageSync(COMMENTS_KEY, list);
-}
+const readFeeds = () => readLocal(FEEDS_KEY);
+const saveFeeds = (list) => saveLocal(FEEDS_KEY, list);
+const readComments = () => readLocal(COMMENTS_KEY);
+const saveComments = (list) => saveLocal(COMMENTS_KEY, list);
 
 function getFeedCollection() {
   const db = getCloudDatabase();
@@ -74,25 +66,24 @@ function getCommentCollection() {
 
 // --- Cloud operations ---
 
-async function listFeedsFromCloud(topic) {
+async function listFeedsFromCloud(topic, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
   const collection = getFeedCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
-  const query = topic
-    ? collection.where({ status: "active", topic })
-    : collection.where({ status: "active" });
-
-  const res = await query.orderBy("createdAt", "desc").limit(100).get();
-  return (res.data || []).map((item) => normalizeFeed(item));
+  const where = topic ? { status: "active", topic } : { status: "active" };
+  const skip = (page - 1) * pageSize;
+  const res = await collection
+    .where(where)
+    .orderBy("createdAt", "desc")
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+  return (res.data || []).map(normalizeFeed);
 }
 
 async function publishFeedToCloud(payload) {
   const collection = getFeedCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const now = Date.now();
   const data = {
@@ -116,72 +107,51 @@ async function publishFeedToCloud(payload) {
 
 async function toggleLikeInCloud(feedId, userId) {
   const collection = getFeedCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const db = getCloudDatabase();
   const _ = db.command;
   const res = await collection.doc(feedId).get().catch(() => null);
-  if (!res || !res.data) {
-    return null;
-  }
+  if (!res || !res.data) { return null; }
 
-  const feed = normalizeFeed(res.data);
-  const isLiked = feed.likedBy.includes(userId);
+  const isLiked = (res.data.likedBy || []).includes(userId);
+  const update = isLiked
+    ? { likedBy: _.pull(userId), likeCount: _.inc(-1), updatedAt: Date.now() }
+    : { likedBy: _.push(userId), likeCount: _.inc(1), updatedAt: Date.now() };
 
-  if (isLiked) {
-    await collection.doc(feedId).update({
-      data: {
-        likedBy: _.pull(userId),
-        likeCount: _.inc(-1),
-        updatedAt: Date.now()
-      }
-    });
-    return false;
-  }
-
-  await collection.doc(feedId).update({
-    data: {
-      likedBy: _.push(userId),
-      likeCount: _.inc(1),
-      updatedAt: Date.now()
-    }
-  });
-  return true;
+  await collection.doc(feedId).update({ data: update });
+  return !isLiked;
 }
 
-async function deleteFeedInCloud(feedId) {
+async function deleteFeedInCloud(feedId, userId) {
   const collection = getFeedCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
-  const res = await collection.doc(feedId).update({
+  const res = await collection.doc(feedId).get().catch(() => null);
+  if (!res || !res.data) { return false; }
+  if (res.data.authorId && res.data.authorId !== userId) { return false; }
+
+  const updateRes = await collection.doc(feedId).update({
     data: { status: "deleted", updatedAt: Date.now() }
   }).catch(() => null);
-  return !!(res && res.stats && res.stats.updated > 0);
+  return !!(updateRes && updateRes.stats && updateRes.stats.updated > 0);
 }
 
 async function listCommentsFromCloud(feedId) {
   const collection = getCommentCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const res = await collection
     .where({ feedId })
     .orderBy("createdAt", "asc")
     .limit(200)
     .get();
-  return (res.data || []).map((item) => normalizeComment(item));
+  return (res.data || []).map(normalizeComment);
 }
 
 async function addCommentToCloud(payload) {
   const collection = getCommentCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const now = Date.now();
   const data = {
@@ -200,9 +170,8 @@ async function addCommentToCloud(payload) {
   const feedCollection = getFeedCollection();
   if (feedCollection) {
     const db = getCloudDatabase();
-    const _ = db.command;
     await feedCollection.doc(payload.feedId).update({
-      data: { commentCount: _.inc(1), updatedAt: now }
+      data: { commentCount: db.command.inc(1), updatedAt: now }
     }).catch(() => null);
   }
 
@@ -211,9 +180,7 @@ async function addCommentToCloud(payload) {
 
 async function getFeedByIdFromCloud(feedId) {
   const collection = getFeedCollection();
-  if (!collection) {
-    throw new Error("Cloud database is unavailable");
-  }
+  if (!collection) { throw new Error("Cloud database is unavailable"); }
 
   const res = await collection.doc(feedId).get().catch(() => null);
   return res && res.data ? normalizeFeed(res.data) : null;
@@ -221,160 +188,133 @@ async function getFeedByIdFromCloud(feedId) {
 
 // --- Exported API ---
 
-export async function listFeeds(topic) {
-  const cloudList = await listFeedsFromCloud(topic).catch(() => null);
-  if (cloudList) {
-    return cloudList;
-  }
+export async function listFeeds(topic, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
+  const cloudList = await listFeedsFromCloud(topic, page, pageSize).catch(() => null);
+  if (cloudList) { return cloudList; }
 
   await wait();
-  let list = readFeeds().map((item) => normalizeFeed(item)).filter((item) => item.status === "active");
-  if (topic) {
-    list = list.filter((item) => item.topic === topic);
-  }
-  return list.sort((a, b) => b.createdAt - a.createdAt);
+  let list = readFeeds().map(normalizeFeed).filter((f) => f.status === "active");
+  if (topic) { list = list.filter((f) => f.topic === topic); }
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  const start = (page - 1) * pageSize;
+  return list.slice(start, start + pageSize);
 }
 
 export async function getFeedById(feedId) {
-  if (!feedId) {
-    return null;
-  }
+  if (!feedId) { return null; }
 
   const cloudFeed = await getFeedByIdFromCloud(feedId).catch(() => null);
-  if (cloudFeed) {
-    return cloudFeed;
-  }
+  if (cloudFeed) { return cloudFeed; }
 
   await wait(30);
-  return readFeeds().map((item) => normalizeFeed(item)).find((item) => item.id === feedId) || null;
+  return readFeeds().map(normalizeFeed).find((f) => f.id === feedId) || null;
 }
 
 export async function publishFeed(payload) {
   const userId = getCurrentUserId();
-  if (!userId) {
-    throw new Error("User is not logged in");
+  if (!userId) { throw new Error("User is not logged in"); }
+  if (_publishLock) { throw new Error("Publish in progress"); }
+
+  _publishLock = true;
+  try {
+    const profile = getCurrentProfile();
+    const fullPayload = {
+      ...payload,
+      authorId: userId,
+      authorName: profile.nickName || "校园用户",
+      authorAvatar: profile.avatar || "",
+      content: sanitizeText(payload.content, { maxLength: 500 })
+    };
+
+    const cloudFeed = await publishFeedToCloud(fullPayload).catch(() => null);
+    if (cloudFeed) {
+      addPoints("publish_feed", cloudFeed.id).catch(() => null);
+      return cloudFeed;
+    }
+
+    const feed = normalizeFeed({
+      ...fullPayload,
+      id: generateId("feed"),
+      status: "active",
+      createdAt: Date.now()
+    });
+    const list = readFeeds();
+    list.unshift(feed);
+    saveFeeds(list);
+    addPoints("publish_feed", feed.id).catch(() => null);
+    await wait();
+    return feed;
+  } finally {
+    _publishLock = false;
   }
-
-  const profile = getCurrentProfile();
-  const fullPayload = {
-    ...payload,
-    authorId: userId,
-    authorName: profile.nickName || "校园用户",
-    authorAvatar: profile.avatar || ""
-  };
-
-  fullPayload.content = sanitizeText(fullPayload.content, { maxLength: 500 });
-
-  const cloudFeed = await publishFeedToCloud(fullPayload).catch(() => null);
-  if (cloudFeed) {
-    addPoints("publish_feed", cloudFeed.id).catch(() => null);
-    return cloudFeed;
-  }
-
-  const feed = normalizeFeed({
-    ...fullPayload,
-    id: generateId("feed"),
-    status: "active",
-    createdAt: Date.now()
-  });
-  const list = readFeeds();
-  list.unshift(feed);
-  saveFeeds(list);
-  addPoints("publish_feed", feed.id).catch(() => null);
-  await wait();
-  return feed;
 }
 
 export async function toggleLike(feedId) {
   const userId = getCurrentUserId();
-  if (!userId || !feedId) {
-    return null;
-  }
+  if (!userId || !feedId) { return null; }
 
   const cloudResult = await toggleLikeInCloud(feedId, userId).catch(() => null);
-  if (cloudResult !== null) {
-    return cloudResult;
-  }
+  if (cloudResult !== null) { return cloudResult; }
 
-  const list = readFeeds().map((item) => normalizeFeed(item));
-  const idx = list.findIndex((item) => item.id === feedId);
-  if (idx < 0) {
-    return null;
-  }
+  const list = readFeeds().map(normalizeFeed);
+  const idx = list.findIndex((f) => f.id === feedId);
+  if (idx < 0) { return null; }
 
-  const feed = list[idx];
+  const feed = { ...list[idx] };
   const isLiked = feed.likedBy.includes(userId);
-  if (isLiked) {
-    feed.likedBy = feed.likedBy.filter((id) => id !== userId);
-    feed.likeCount = Math.max(0, feed.likeCount - 1);
-  } else {
-    feed.likedBy.push(userId);
-    feed.likeCount += 1;
-  }
+  feed.likedBy = isLiked
+    ? feed.likedBy.filter((id) => id !== userId)
+    : [...feed.likedBy, userId];
+  feed.likeCount = Math.max(0, feed.likeCount + (isLiked ? -1 : 1));
   feed.updatedAt = Date.now();
-  list.splice(idx, 1, feed);
+  list[idx] = feed;
   saveFeeds(list);
   return !isLiked;
 }
 
 export async function deleteFeed(feedId) {
   const userId = getCurrentUserId();
-  if (!userId || !feedId) {
-    return false;
-  }
+  if (!userId || !feedId) { return false; }
 
-  const cloudResult = await deleteFeedInCloud(feedId).catch(() => null);
-  if (typeof cloudResult === "boolean") {
-    return cloudResult;
-  }
+  const cloudResult = await deleteFeedInCloud(feedId, userId).catch(() => null);
+  if (typeof cloudResult === "boolean") { return cloudResult; }
 
-  const list = readFeeds().map((item) => normalizeFeed(item));
-  const idx = list.findIndex((item) => item.id === feedId && item.authorId === userId);
-  if (idx < 0) {
-    return false;
-  }
-  list.splice(idx, 1, { ...list[idx], status: "deleted", updatedAt: Date.now() });
+  const list = readFeeds().map(normalizeFeed);
+  const idx = list.findIndex((f) => f.id === feedId && f.authorId === userId);
+  if (idx < 0) { return false; }
+  list[idx] = { ...list[idx], status: "deleted", updatedAt: Date.now() };
   saveFeeds(list);
   return true;
 }
 
 export async function listComments(feedId) {
-  if (!feedId) {
-    return [];
-  }
+  if (!feedId) { return []; }
 
   const cloudComments = await listCommentsFromCloud(feedId).catch(() => null);
-  if (cloudComments) {
-    return cloudComments;
-  }
+  if (cloudComments) { return cloudComments; }
 
   await wait(30);
   return readComments()
-    .map((item) => normalizeComment(item))
-    .filter((item) => item.feedId === feedId)
+    .map(normalizeComment)
+    .filter((c) => c.feedId === feedId)
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export async function addComment(payload) {
   const userId = getCurrentUserId();
-  if (!userId) {
-    throw new Error("User is not logged in");
-  }
+  if (!userId) { throw new Error("User is not logged in"); }
 
   const profile = getCurrentProfile();
   const fullPayload = {
     ...payload,
     authorId: userId,
     authorName: profile.nickName || "校园用户",
-    authorAvatar: profile.avatar || ""
+    authorAvatar: profile.avatar || "",
+    content: sanitizeText(payload.content, { maxLength: 500 })
   };
 
-  fullPayload.content = sanitizeText(fullPayload.content, { maxLength: 500 });
-
   const cloudComment = await addCommentToCloud(fullPayload).catch(() => null);
-  if (cloudComment) {
-    return cloudComment;
-  }
+  if (cloudComment) { return cloudComment; }
 
   const comment = normalizeComment({
     ...fullPayload,
@@ -385,11 +325,10 @@ export async function addComment(payload) {
   comments.push(comment);
   saveComments(comments);
 
-  const feeds = readFeeds().map((item) => normalizeFeed(item));
-  const feedIdx = feeds.findIndex((item) => item.id === payload.feedId);
+  const feeds = readFeeds().map(normalizeFeed);
+  const feedIdx = feeds.findIndex((f) => f.id === payload.feedId);
   if (feedIdx >= 0) {
-    feeds[feedIdx].commentCount += 1;
-    feeds[feedIdx].updatedAt = Date.now();
+    feeds[feedIdx] = { ...feeds[feedIdx], commentCount: feeds[feedIdx].commentCount + 1, updatedAt: Date.now() };
     saveFeeds(feeds);
   }
 
