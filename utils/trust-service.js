@@ -197,3 +197,34 @@ export async function recordReport() {
     reportCount: current.reportCount + 1
   });
 }
+
+export async function recordOrderCancellation(cancellerUserId) {
+  if (!cancellerUserId) { return; }
+  const current = await getTrustScore(cancellerUserId);
+  const penaltyScore = Math.max(0, current.score - 3);
+  const updated = { ...current, score: penaltyScore, updatedAt: Date.now() };
+  const cloudRecord = await upsertScoreInCloud(cancellerUserId, updated).catch(() => null);
+  if (cloudRecord) {
+    saveLocalScore(cancellerUserId, cloudRecord);
+    return;
+  }
+  saveLocalScore(cancellerUserId, updated);
+}
+
+export async function updateAvgRating(targetUserId, avgRating) {
+  if (!targetUserId) { return; }
+  const current = await getTrustScore(targetUserId);
+  const updated = {
+    ...current,
+    avgRating
+  };
+  updated.score = computeScore(updated);
+  updated.updatedAt = Date.now();
+  const cloudRecord = await upsertScoreInCloud(targetUserId, updated).catch(() => null);
+  if (cloudRecord) {
+    saveLocalScore(targetUserId, cloudRecord);
+    return cloudRecord;
+  }
+  saveLocalScore(targetUserId, normalizeTrustRecord(updated));
+  return normalizeTrustRecord(updated);
+}

@@ -3,11 +3,22 @@ import { getCloudDatabase } from "@/utils/cloud";
 
 import { sanitizeText } from "@/utils/sanitize";
 import { addPoints } from "@/utils/points-service";
-import { recordOrderCompletion } from "@/utils/trust-service";
+import { recordOrderCompletion, recordOrderCancellation, updateAvgRating } from "@/utils/trust-service";
 import { updateProductStatus } from "@/utils/product-service";
 
 const ORDERS_KEY = "cm_orders";
 const REVIEWS_KEY = "cm_reviews";
+
+const ORDER_EXPIRE_MS = 24 * 60 * 60 * 1000;
+
+const CANCEL_REASONS = [
+  { value: "buyer_changed_mind", label: "买家不想买了" },
+  { value: "seller_unavailable", label: "卖家无法交易" },
+  { value: "price_disagreement", label: "价格未达成一致" },
+  { value: "item_defect", label: "商品与描述不符" },
+  { value: "schedule_conflict", label: "时间无法协调" },
+  { value: "other", label: "其他原因" }
+];
 
 function normalizeOrder(item = {}) {
   return {
@@ -20,10 +31,13 @@ function normalizeOrder(item = {}) {
     sellerId: item.sellerId || "",
     sellerName: item.sellerName || "卖家",
     status: item.status || "pending",
+    expireAt: item.expireAt || null,
     meetConfirmedAt: item.meetConfirmedAt || null,
     paidConfirmedAt: item.paidConfirmedAt || null,
     receivedConfirmedAt: item.receivedConfirmedAt || null,
     cancelledAt: item.cancelledAt || null,
+    cancelledBy: item.cancelledBy || "",
+    cancelReason: item.cancelReason || "",
     completedAt: item.completedAt || null,
     createdAt: item.createdAt || Date.now(),
     updatedAt: item.updatedAt || item.createdAt || Date.now()
@@ -81,6 +95,13 @@ function canOperateOrder(order, userId, nextStatus) {
   return false;
 }
 
+function isOrderExpired(order) {
+  if (!order || !order.expireAt) {
+    return false;
+  }
+  return Date.now() > Number(order.expireAt) && ["pending", "meet_confirmed"].includes(order.status);
+}
+
 function readOrders() {
   try {
     return uni.getStorageSync(ORDERS_KEY) || [];
@@ -121,6 +142,84 @@ function getReviewCollection() {
   return db.collection("reviews");
 }
 
+function hasActiveOrderForProduct(productId, excludeOrderId) {
+  const list = readOrders().map((item) => normalizeOrder(item));
+  return list.some(
+    (o) =>
+      o.productId === productId &&
+      o.id !== excludeOrderId &&
+      !["completed", "cancelled"].includes(o.status)
+  );
+}
+
+async function hasActiveOrderForProductInCloud(productId) {
+  const collection = getOrderCollection();
+  if (!collection) {
+    return false;
+  }
+  const db = getCloudDatabase();
+  const _ = db.command;
+  const res = await collection
+    .where({
+      productId,
+      status: _.nin(["completed", "cancelled"])
+    })
+    .limit(1)
+    .get()
+    .catch(() => null);
+  return !!(res && res.data && res.data.length > 0);
+}
+
+function applyExpireCheck(order) {
+  if (!order) {
+    return order;
+  }
+  if (isOrderExpired(order)) {
+    return {
+      ...order,
+      status: "cancelled",
+      cancelledAt: Number(order.expireAt),
+      cancelledBy: "system",
+      cancelReason: "超时自动取消",
+      updatedAt: Number(order.expireAt)
+    };
+  }
+  return order;
+}
+
+async function persistExpireCancellation(order) {
+  if (!order || order.status !== "cancelled" || order.cancelledBy !== "system") {
+    return;
+  }
+
+  const collection = getOrderCollection();
+  if (collection) {
+    await collection
+      .doc(order.id)
+      .update({
+        data: {
+          status: "cancelled",
+          cancelledAt: order.cancelledAt,
+          cancelledBy: "system",
+          cancelReason: "超时自动取消",
+          updatedAt: order.cancelledAt
+        }
+      })
+      .catch(() => null);
+  } else {
+    const list = readOrders();
+    const idx = list.findIndex((item) => (item.id || item._id) === order.id);
+    if (idx >= 0) {
+      list.splice(idx, 1, { ...list[idx], ...order });
+      saveOrders(list);
+    }
+  }
+
+  if (order.productId) {
+    updateProductStatus(order.productId, "available").catch(() => null);
+  }
+}
+
 // --- Cloud operations ---
 
 async function createOrderInCloud(payload) {
@@ -139,10 +238,13 @@ async function createOrderInCloud(payload) {
     sellerId: payload.sellerId,
     sellerName: payload.sellerName || "卖家",
     status: "pending",
+    expireAt: now + ORDER_EXPIRE_MS,
     meetConfirmedAt: null,
     paidConfirmedAt: null,
     receivedConfirmedAt: null,
     cancelledAt: null,
+    cancelledBy: "",
+    cancelReason: "",
     completedAt: null,
     createdAt: now,
     updatedAt: now
@@ -182,7 +284,7 @@ async function getOrderFromCloud(orderId) {
   return normalizeOrder(res.data);
 }
 
-async function updateOrderStatusInCloud(orderId, status, userId) {
+async function updateOrderStatusInCloud(orderId, status, userId, extra = {}) {
   const collection = getOrderCollection();
   if (!collection) {
     throw new Error("Cloud database is unavailable");
@@ -190,6 +292,11 @@ async function updateOrderStatusInCloud(orderId, status, userId) {
 
   const current = await getOrderFromCloud(orderId);
   if (!current) {
+    return false;
+  }
+
+  if (isOrderExpired(current)) {
+    await persistExpireCancellation(applyExpireCheck(current));
     return false;
   }
 
@@ -205,6 +312,7 @@ async function updateOrderStatusInCloud(orderId, status, userId) {
   const patch = { status, updatedAt: now };
   if (status === "meet_confirmed") {
     patch.meetConfirmedAt = now;
+    patch.expireAt = null;
   }
   if (status === "paid_confirmed") {
     patch.paidConfirmedAt = now;
@@ -217,6 +325,8 @@ async function updateOrderStatusInCloud(orderId, status, userId) {
   }
   if (status === "cancelled") {
     patch.cancelledAt = now;
+    patch.cancelledBy = userId;
+    patch.cancelReason = extra.cancelReason || "";
   }
 
   const res = await collection.doc(orderId).update({ data: patch }).catch(() => null);
@@ -271,12 +381,43 @@ async function getOrderReviewsFromCloud(orderId) {
   return (res.data || []).map((item) => normalizeReview(item));
 }
 
+async function computeUserAvgRating(userId) {
+  const reviews = [];
+
+  const collection = getReviewCollection();
+  if (collection) {
+    const res = await collection.where({ toUserId: userId }).limit(200).get().catch(() => null);
+    if (res && res.data) {
+      reviews.push(...res.data);
+    }
+  } else {
+    const all = readReviews().filter((r) => r.toUserId === userId);
+    reviews.push(...all);
+  }
+
+  if (reviews.length === 0) {
+    return 0;
+  }
+  const total = reviews.reduce((sum, r) => sum + Math.min(5, Math.max(1, Number(r.score || 5))), 0);
+  return Math.round((total / reviews.length) * 10) / 10;
+}
+
 // --- Exported API ---
 
 export async function createOrder(payload) {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User is not logged in");
+  }
+
+  if (payload.productId) {
+    const cloudDup = await hasActiveOrderForProductInCloud(payload.productId).catch(() => false);
+    if (cloudDup) {
+      throw new Error("该商品已有进行中的订单");
+    }
+    if (hasActiveOrderForProduct(payload.productId)) {
+      throw new Error("该商品已有进行中的订单");
+    }
   }
 
   const profile = getCurrentProfile();
@@ -288,19 +429,29 @@ export async function createOrder(payload) {
 
   const cloudOrder = await createOrderInCloud(fullPayload).catch(() => null);
   if (cloudOrder) {
+    if (payload.productId) {
+      updateProductStatus(payload.productId, "reserved").catch(() => null);
+    }
     return cloudOrder;
   }
 
+  const now = Date.now();
   const order = normalizeOrder({
     ...fullPayload,
     id: generateId("order"),
     status: "pending",
-    createdAt: Date.now(),
-    updatedAt: Date.now()
+    expireAt: now + ORDER_EXPIRE_MS,
+    createdAt: now,
+    updatedAt: now
   });
   const list = readOrders();
   list.unshift(order);
   saveOrders(list);
+
+  if (payload.productId) {
+    updateProductStatus(payload.productId, "reserved").catch(() => null);
+  }
+
   await wait();
   return order;
 }
@@ -335,37 +486,44 @@ export async function getOrder(orderId) {
     if (userId && cloudOrder.buyerId !== userId && cloudOrder.sellerId !== userId) {
       return null;
     }
-    return cloudOrder;
+    const checked = applyExpireCheck(cloudOrder);
+    if (checked.status === "cancelled" && checked.cancelledBy === "system" && cloudOrder.status !== "cancelled") {
+      persistExpireCancellation(checked).catch(() => null);
+    }
+    return checked;
   }
 
   await wait(30);
-  const order = readOrders()
+  let order = readOrders()
     .map((item) => normalizeOrder(item))
     .find((item) => item.id === orderId) || null;
 
   if (order && userId && order.buyerId !== userId && order.sellerId !== userId) {
     return null;
   }
+
+  if (order) {
+    const checked = applyExpireCheck(order);
+    if (checked.status === "cancelled" && checked.cancelledBy === "system" && order.status !== "cancelled") {
+      persistExpireCancellation(checked).catch(() => null);
+    }
+    return checked;
+  }
   return order;
 }
 
-export async function updateOrderStatus(orderId, status) {
+export async function updateOrderStatus(orderId, status, extra = {}) {
   const userId = getCurrentUserId();
   if (!userId) {
     return false;
   }
 
-  // 先获取订单信息以便在完成时更新商品状态
-  const orderForUpdate = status === "completed" ? (await getOrder(orderId).catch(() => null)) : null;
+  const orderForSideEffects = await getOrder(orderId).catch(() => null);
 
-  const cloudResult = await updateOrderStatusInCloud(orderId, status, userId).catch(() => null);
+  const cloudResult = await updateOrderStatusInCloud(orderId, status, userId, extra).catch(() => null);
   if (typeof cloudResult === "boolean") {
-    if (cloudResult && status === "completed") {
-      addPoints("complete_order", orderId).catch(() => null);
-      recordOrderCompletion().catch(() => null);
-      if (orderForUpdate && orderForUpdate.productId) {
-        updateProductStatus(orderForUpdate.productId, "sold").catch(() => null);
-      }
+    if (cloudResult) {
+      handleStatusSideEffects(status, orderId, orderForSideEffects, userId, extra);
     }
     return cloudResult;
   }
@@ -377,6 +535,17 @@ export async function updateOrderStatus(orderId, status) {
   }
 
   const current = normalizeOrder(list[idx]);
+
+  if (isOrderExpired(current)) {
+    const expired = applyExpireCheck(current);
+    list.splice(idx, 1, expired);
+    saveOrders(list);
+    if (current.productId) {
+      updateProductStatus(current.productId, "available").catch(() => null);
+    }
+    return false;
+  }
+
   if (!isOrderTransitionAllowed(current.status, status)) {
     return false;
   }
@@ -388,6 +557,7 @@ export async function updateOrderStatus(orderId, status) {
   const patch = { status, updatedAt: now };
   if (status === "meet_confirmed") {
     patch.meetConfirmedAt = now;
+    patch.expireAt = null;
   }
   if (status === "paid_confirmed") {
     patch.paidConfirmedAt = now;
@@ -400,21 +570,37 @@ export async function updateOrderStatus(orderId, status) {
   }
   if (status === "cancelled") {
     patch.cancelledAt = now;
+    patch.cancelledBy = userId;
+    patch.cancelReason = extra.cancelReason || "";
   }
 
   list.splice(idx, 1, { ...current, ...patch });
   saveOrders(list);
 
-  if (status === "completed") {
-    addPoints("complete_order", orderId).catch(() => null);
-    recordOrderCompletion().catch(() => null);
-    if (current.productId) {
-      updateProductStatus(current.productId, "sold").catch(() => null);
-    }
-  }
+  handleStatusSideEffects(status, orderId, current, userId, extra);
 
   await wait();
   return true;
+}
+
+function handleStatusSideEffects(status, orderId, order, userId, extra = {}) {
+  if (status === "completed") {
+    addPoints("complete_order", orderId).catch(() => null);
+    recordOrderCompletion().catch(() => null);
+    if (order && order.productId) {
+      updateProductStatus(order.productId, "sold").catch(() => null);
+    }
+  }
+
+  if (status === "cancelled") {
+    if (order && order.productId) {
+      updateProductStatus(order.productId, "available").catch(() => null);
+    }
+    const wasPaid = order && (order.status === "paid_confirmed" || order.paidConfirmedAt);
+    if (wasPaid) {
+      recordOrderCancellation(userId).catch(() => null);
+    }
+  }
 }
 
 export async function submitReview(payload) {
@@ -440,10 +626,10 @@ export async function submitReview(payload) {
   const cloudReview = await submitReviewToCloud(fullPayload).catch(() => null);
   if (cloudReview) {
     addPoints("submit_review", cloudReview.id).catch(() => null);
+    syncReviewToTrust(fullPayload.toUserId);
     return cloudReview;
   }
 
-  // 本地去重：同一用户不能对同一订单重复评价
   const existing = readReviews();
   const alreadyReviewed = existing.some(
     (r) => r.orderId === fullPayload.orderId && r.fromUserId === fullPayload.fromUserId
@@ -460,8 +646,23 @@ export async function submitReview(payload) {
   existing.push(review);
   saveReviews(existing);
   addPoints("submit_review", review.id).catch(() => null);
+  syncReviewToTrust(fullPayload.toUserId);
   await wait();
   return review;
+}
+
+async function syncReviewToTrust(toUserId) {
+  if (!toUserId) {
+    return;
+  }
+  try {
+    const avg = await computeUserAvgRating(toUserId);
+    if (avg > 0) {
+      await updateAvgRating(toUserId, avg);
+    }
+  } catch (e) {
+    console.warn("[OrderService] syncReviewToTrust failed:", e);
+  }
 }
 
 export async function getOrderReviews(orderId) {
@@ -491,3 +692,5 @@ export function getOrderStatusText(status) {
   };
   return map[status] || "未知状态";
 }
+
+export { CANCEL_REASONS };

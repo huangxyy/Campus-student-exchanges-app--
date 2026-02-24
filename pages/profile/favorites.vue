@@ -9,7 +9,8 @@
     />
 
     <template v-else>
-      <view class="header card">
+      <view class="header glass-strong anim-slide-down" style="border-radius: 28rpx;">
+        <view class="header-title">❤️ 我的收藏</view>
         <view class="count">已收藏 {{ list.length }} 件商品</view>
       </view>
 
@@ -116,17 +117,28 @@ export default {
 
 <style lang="scss" scoped>
 .favorites-page {
-  padding: 22rpx;
+  position: relative;
+  padding: 24rpx;
+  padding-bottom: 120rpx;
+  min-height: 100vh;
+  background: $page-bg;
 }
 
 .header {
-  padding: 18rpx 20rpx;
+  padding: 24rpx;
+  margin-bottom: 12rpx;
+}
+
+.header-title {
+  color: #1a2540;
+  font-size: 34rpx;
+  font-weight: 800;
 }
 
 .count {
-  color: #2a3448;
-  font-size: 26rpx;
-  font-weight: 600;
+  margin-top: 6rpx;
+  color: #5a6a88;
+  font-size: 24rpx;
 }
 
 .loading {
@@ -145,17 +157,21 @@ export default {
   padding: 12rpx 16rpx;
   display: flex;
   justify-content: flex-end;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 0 0 28rpx 28rpx;
 }
 
 .remove-btn {
   margin: 0;
   min-width: 140rpx;
-  height: 52rpx;
-  line-height: 52rpx;
-  border-radius: 26rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  border-radius: 28rpx;
   border: none;
-  background: #fbeef1;
+  background: linear-gradient(135deg, #fceff1, #ffe8ec);
   color: #d5536a;
-  font-size: 22rpx;
+  font-size: 23rpx;
+  font-weight: 600;
 }
+.remove-btn::after { border: none; }
 </style>

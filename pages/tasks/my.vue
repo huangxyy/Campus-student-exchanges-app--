@@ -9,8 +9,8 @@
     />
 
     <template v-else>
-      <view class="header card">
-        <view class="title">我的任务</view>
+      <view class="header glass-strong anim-slide-down" style="border-radius: 28rpx;">
+        <view class="title">📋 我的任务</view>
         <view class="stats">发布 {{ publishedList.length }} · 接取 {{ acceptedList.length }}</view>
       </view>
 
@@ -32,7 +32,7 @@
         </text>
       </view>
 
-      <view class="filter card">
+      <view class="filter glass-strong" style="border-radius: 20rpx;">
         <scroll-view scroll-x class="filter-line">
           <text
             v-for="item in typeOptions"
@@ -72,7 +72,7 @@
       <view v-if="loading" class="loading">加载中...</view>
 
       <template v-else>
-        <view v-for="item in displayList" :key="item.id" class="task-item card">
+        <view v-for="item in displayList" :key="item.id" class="task-item glass-strong card-press" style="border-radius: 22rpx;">
           <view class="task-head">
             <view class="task-title">{{ item.title }}</view>
             <view class="reward">¥{{ item.reward }}</view>
@@ -339,22 +339,27 @@ export default {
 
 <style lang="scss" scoped>
 .my-tasks-page {
-  padding: 22rpx;
+  position: relative;
+  padding: 24rpx;
+  padding-bottom: 120rpx;
+  min-height: 100vh;
+  background: $page-bg;
 }
 
 .header {
-  padding: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 4rpx;
 }
 
 .title {
-  color: #1f2638;
-  font-size: 32rpx;
-  font-weight: 700;
+  color: #1a2540;
+  font-size: 34rpx;
+  font-weight: 800;
 }
 
 .stats {
   margin-top: 8rpx;
-  color: #6d7890;
+  color: #5a6a88;
   font-size: 24rpx;
 }
 
@@ -369,16 +374,21 @@ export default {
 }
 
 .tab {
-  padding: 10rpx 22rpx;
+  padding: 12rpx 24rpx;
   border-radius: 999rpx;
-  background: #eef2fa;
-  color: #67748d;
+  background: rgba(238, 242, 251, 0.7);
+  color: #5f708e;
   font-size: 24rpx;
+  font-weight: 600;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
+  transition: all 0.25s ease;
 }
 
 .tab.active {
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.25);
 }
 
 .loading {
@@ -403,16 +413,19 @@ export default {
 .filter-chip {
   display: inline-block;
   margin-right: 10rpx;
-  padding: 8rpx 18rpx;
+  padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: #eef2fa;
-  color: #68748d;
+  background: rgba(238, 242, 251, 0.6);
+  color: #5f708e;
   font-size: 23rpx;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .filter-chip.active {
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   color: #fff;
+  box-shadow: 0 3rpx 10rpx rgba(47, 107, 255, 0.2);
 }
 
 .summary {
@@ -474,17 +487,19 @@ export default {
 .op-btn {
   margin: 0;
   min-width: 140rpx;
-  height: 52rpx;
-  line-height: 52rpx;
-  border-radius: 26rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  border-radius: 28rpx;
   border: none;
-  background: #edf2ff;
-  color: #365bc2;
-  font-size: 22rpx;
+  background: linear-gradient(135deg, #e7efff, #dfe9ff);
+  color: #325ec0;
+  font-size: 23rpx;
+  font-weight: 600;
 }
+.op-btn::after { border: none; }
 
 .op-btn.danger {
-  background: #fbeef1;
+  background: linear-gradient(135deg, #fceff1, #ffe8ec);
   color: #d5536a;
 }
 </style>

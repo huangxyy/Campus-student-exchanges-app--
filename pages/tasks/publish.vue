@@ -1,7 +1,21 @@
 <template>
   <view class="publish-task-page">
-    <view class="form card">
-      <view v-if="quickMode" class="quick-tip">快递代取专区快速发单</view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+      <view class="orb orb-2 anim-float-x"></view>
+    </view>
+
+    <view class="header glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="header-deco"></view>
+      <view class="header-title">📌 发布任务</view>
+      <view class="header-desc">发布你的需求，等同学来帮忙</view>
+    </view>
+
+    <view class="form glass-strong anim-slide-up anim-d1" style="border-radius: 24rpx;">
+      <view v-if="quickMode" class="quick-tip">
+        <text class="quick-icon">⚡</text>
+        快递代取专区快速发单
+      </view>
 
       <view class="field">
         <view class="label">任务标题</view>
@@ -90,7 +104,7 @@
       </view>
     </view>
 
-    <button class="submit" :loading="submitting" @tap="submit">发布任务</button>
+    <button class="submit btn-bounce anim-slide-up anim-d2" :loading="submitting" @tap="submit">发布任务</button>
   </view>
 </template>
 
@@ -273,21 +287,81 @@ export default {
 
 <style lang="scss" scoped>
 .publish-task-page {
-  padding: 22rpx;
+  position: relative;
+  padding: 24rpx;
+  padding-bottom: 180rpx;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
+}
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.45;
+}
+.orb-1 {
+  width: 180rpx; height: 180rpx;
+  top: -20rpx; right: -30rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.25), transparent 70%);
+}
+.orb-2 {
+  width: 140rpx; height: 140rpx;
+  top: 400rpx; left: -20rpx;
+  background: radial-gradient(circle, rgba(250, 170, 50, 0.2), transparent 70%);
+}
+
+.header {
+  position: relative;
+  padding: 28rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+}
+.header-deco {
+  position: absolute;
+  top: -50rpx; right: -30rpx;
+  width: 180rpx; height: 180rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.08), transparent);
+  pointer-events: none;
+}
+.header-title {
+  position: relative;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1a2540;
+}
+.header-desc {
+  margin-top: 8rpx;
+  color: #5a6a88;
+  font-size: 24rpx;
 }
 
 .form {
-  padding: 22rpx;
+  padding: 24rpx;
 }
 
 .quick-tip {
   margin-bottom: 14rpx;
-  border-radius: 12rpx;
-  padding: 12rpx 16rpx;
-  background: #eef4ff;
+  border-radius: 16rpx;
+  padding: 14rpx 18rpx;
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0.03));
   color: #2f6bff;
-  font-size: 23rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  border: 1rpx solid rgba(47, 107, 255, 0.1);
 }
+.quick-icon { font-size: 22rpx; }
 
 .field + .field {
   margin-top: 20rpx;
@@ -295,8 +369,9 @@ export default {
 
 .label {
   margin-bottom: 10rpx;
-  color: #293347;
+  color: #1a2540;
   font-size: 25rpx;
+  font-weight: 600;
 }
 
 .switch-row {
@@ -312,11 +387,13 @@ export default {
 .input,
 .picker,
 .textarea {
-  background: #f3f5fb;
-  border-radius: 14rpx;
-  padding: 0 16rpx;
-  color: #273247;
-  font-size: 25rpx;
+  background: rgba(238, 242, 251, 0.6);
+  border-radius: 16rpx;
+  padding: 0 20rpx;
+  color: #2b3448;
+  font-size: 26rpx;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
+  transition: border-color 0.2s ease;
 }
 
 .input,
@@ -348,16 +425,21 @@ export default {
 }
 
 .req-tag {
-  padding: 8rpx 18rpx;
+  padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: #eef2fa;
-  color: #67758e;
-  font-size: 23rpx;
+  background: rgba(238, 242, 251, 0.7);
+  color: #5f708e;
+  font-size: 24rpx;
+  font-weight: 500;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
+  transition: all 0.25s ease;
 }
 
 .req-tag.active {
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #5b8af5);
   color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4rpx 12rpx rgba(47, 107, 255, 0.25);
 }
 
 .req-input {
@@ -365,13 +447,20 @@ export default {
 }
 
 .submit {
-  margin-top: 20rpx;
-  height: 84rpx;
-  line-height: 84rpx;
-  border-radius: 42rpx;
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(40rpx + env(safe-area-inset-bottom));
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
   border: none;
-  background: #2f6bff;
+  background: linear-gradient(135deg, #2f6bff, #2459d6);
   color: #fff;
-  font-size: 27rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  box-shadow: 0 8rpx 24rpx rgba(47, 107, 255, 0.3);
+  z-index: 100;
 }
+.submit::after { border: none; }
 </style>

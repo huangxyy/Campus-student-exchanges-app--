@@ -10,10 +10,11 @@
 
     <template v-else>
       <!-- Banner -->
-      <view class="banner card anim-slide-down">
+      <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+        <view class="banner-deco"></view>
         <view class="banner-top">
           <view>
-            <view class="banner-title">消息中心</view>
+            <view class="banner-title">💬 消息中心</view>
             <view class="banner-desc">交易沟通、任务协作，实时在线</view>
           </view>
           <view class="banner-badge anim-float" @tap.stop="onBadgeTap">💬</view>
@@ -25,12 +26,12 @@
       </view>
 
       <!-- 提示 -->
-      <view class="tip card anim-slide-up anim-d1">
+      <view class="tip glass anim-slide-up anim-d1" style="border-radius: 16rpx;">
         <view class="tip-icon">ℹ</view>
         <text :class="['tip-text', syncMode === 'polling' ? 'tip-text-warn' : '']">{{ syncHintText }}</text>
       </view>
 
-      <view class="search-wrap card anim-fade-in anim-d2">
+      <view class="search-wrap glass anim-fade-in anim-d2" style="border-radius: 20rpx;">
         <input
           v-model.trim="keyword"
           class="search-input"
@@ -416,38 +417,41 @@ export default {
 
 <style lang="scss" scoped>
 .chat-page {
+  position: relative;
   padding: 24rpx;
   padding-bottom: 120rpx;
-  background:
-    radial-gradient(circle at 10% 6%, rgba(47, 107, 255, 0.12), rgba(47, 107, 255, 0)),
-    radial-gradient(circle at 90% 18%, rgba(120, 80, 255, 0.08), rgba(120, 80, 255, 0)),
-    #f5f7fc;
+  min-height: 100vh;
+  background: $page-bg;
 }
 
 /* --- Banner --- */
 .banner {
-  padding: 26rpx;
-  background:
-    linear-gradient(140deg, rgba(235, 240, 255, 0.96), rgba(245, 248, 255, 0.98)),
-    #ffffff;
-  border: 1rpx solid #e4ebfb;
+  position: relative;
+  padding: 28rpx;
+  margin-bottom: 4rpx;
+  overflow: hidden;
+}
+.banner-deco {
+  position: absolute; top: -50rpx; right: -30rpx; width: 180rpx; height: 180rpx; border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.08), transparent); pointer-events: none;
 }
 
 .banner-top {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
 }
 
 .banner-title {
-  color: #1f2636;
-  font-size: 34rpx;
-  font-weight: 700;
+  color: #1a2540;
+  font-size: 36rpx;
+  font-weight: 800;
 }
 
 .banner-desc {
   margin-top: 8rpx;
-  color: #647188;
+  color: #5a6a88;
   font-size: 24rpx;
 }
 

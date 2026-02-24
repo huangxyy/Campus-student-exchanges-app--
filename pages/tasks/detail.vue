@@ -94,6 +94,9 @@
         <button v-if="showDeliveredAction" class="ui-btn ui-btn-primary action-btn" :loading="submitting" @tap="changeStatus('delivered')">
           确认送达
         </button>
+        <button v-if="showDualConfirmAction" class="ui-btn ui-btn-primary action-btn" :loading="submitting" @tap="dualConfirmComplete">
+          {{ myDualConfirmDone ? '等待对方确认' : '确认完成' }}
+        </button>
         <button v-if="showCompleteAction" class="ui-btn ui-btn-primary action-btn" :loading="submitting" @tap="changeStatus('completed')">
           确认完成
         </button>
@@ -322,6 +325,29 @@ export default {
       return this.task.status === "picked_up" && this.isAssignee;
     },
 
+    showDualConfirmAction() {
+      if (!this.task || !this.isLogin || this.isExpressTask) {
+        return false;
+      }
+      if (this.task.status !== "assigned") {
+        return false;
+      }
+      return this.isOwner || this.isAssignee;
+    },
+
+    myDualConfirmDone() {
+      if (!this.task) {
+        return false;
+      }
+      if (this.isOwner && this.task.confirmByPublisherAt) {
+        return true;
+      }
+      if (this.isAssignee && this.task.confirmByAssigneeAt) {
+        return true;
+      }
+      return false;
+    },
+
     showCompleteAction() {
       if (!this.task || !this.isLogin) {
         return false;
@@ -329,7 +355,7 @@ export default {
       if (this.isExpressTask) {
         return this.task.status === "delivered" && this.isOwner;
       }
-      return this.task.status === "assigned" && this.isOwner;
+      return false;
     },
 
     showCancelAction() {
@@ -671,6 +697,30 @@ export default {
           }
         }
       });
+    },
+
+    async dualConfirmComplete() {
+      if (!this.isLogin || !this.task || this.task.status !== "assigned") {
+        return;
+      }
+      if (this.myDualConfirmDone) {
+        uni.showToast({ title: "你已确认，等待对方确认", icon: "none" });
+        return;
+      }
+      this.submitting = true;
+      try {
+        const result = await updateTaskStatus(this.task.id, "confirm_complete", this.myUserId);
+        if (result === true) {
+          uni.showToast({ title: "双方已确认，任务完成", icon: "success" });
+        } else if (result === "confirmed") {
+          uni.showToast({ title: "已确认，等待对方确认", icon: "none" });
+        } else {
+          uni.showToast({ title: "操作失败", icon: "none" });
+        }
+        this.loadTask();
+      } finally {
+        this.submitting = false;
+      }
     },
 
     async changeStatus(status) {

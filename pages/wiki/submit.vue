@@ -1,11 +1,16 @@
 <template>
   <view class="submit-page">
-    <view class="banner card anim-slide-down">
-      <view class="banner-title">投稿维基</view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+    </view>
+
+    <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="banner-deco"></view>
+      <view class="banner-title">📖 投稿维基</view>
       <view class="banner-desc">分享你的校园经验，帮助更多同学</view>
     </view>
 
-    <view class="form card anim-slide-up anim-d1">
+    <view class="form glass-strong anim-slide-up anim-d1" style="border-radius: 24rpx;">
       <view class="field">
         <text class="label">标题 *</text>
         <input v-model.trim="form.title" class="input" maxlength="60" placeholder="例如：图书馆使用完全指南" />
@@ -99,30 +104,53 @@ export default {
 
 <style lang="scss" scoped>
 .submit-page {
-  padding: 24rpx; padding-bottom: 160rpx;
-  background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0) 60%), #f2f5fb;
+  position: relative;
+  padding: 24rpx; padding-bottom: 180rpx;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
 }
-.banner { padding: 22rpx; background: linear-gradient(140deg, rgba(232, 252, 244, 0.96), rgba(245, 255, 250, 0.98)), #ffffff; border: 1rpx solid #c8e8d8; }
-.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 700; }
-.banner-desc { margin-top: 8rpx; color: #647188; font-size: 24rpx; }
-.form { margin-top: 14rpx; padding: 20rpx; }
+.page-orbs { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; overflow: hidden; }
+.orb { position: absolute; border-radius: 50%; filter: blur(40rpx); opacity: 0.45; }
+.orb-1 { width: 160rpx; height: 160rpx; top: -20rpx; right: -30rpx; background: radial-gradient(circle, rgba(16, 185, 129, 0.25), transparent 70%); }
+
+.banner { position: relative; padding: 28rpx; margin-bottom: 16rpx; overflow: hidden; }
+.banner-deco {
+  position: absolute; top: -50rpx; right: -30rpx; width: 180rpx; height: 180rpx; border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent); pointer-events: none;
+}
+.banner-title { position: relative; color: #1a2540; font-size: 36rpx; font-weight: 800; }
+.banner-desc { margin-top: 8rpx; color: #5a6a88; font-size: 24rpx; }
+
+.form { padding: 24rpx; }
 .field { margin-bottom: 22rpx; }
-.label { color: #33435f; font-size: 25rpx; font-weight: 600; display: block; margin-bottom: 10rpx; }
+.label { color: #1a2540; font-size: 26rpx; font-weight: 600; display: block; margin-bottom: 10rpx; }
 .input {
-  height: 76rpx; padding: 0 20rpx; border-radius: 16rpx; background: #f6f8fc;
-  border: 1rpx solid #e5ebf8; color: #2b3345; font-size: 26rpx;
+  height: 76rpx; padding: 0 20rpx; border-radius: 16rpx;
+  background: rgba(238, 242, 251, 0.6); border: 1rpx solid rgba(228, 235, 251, 0.5);
+  color: #2b3448; font-size: 26rpx; transition: border-color 0.2s ease;
 }
 .textarea {
   width: 100%; min-height: 300rpx; padding: 16rpx 20rpx; border-radius: 16rpx;
-  background: #f6f8fc; border: 1rpx solid #e5ebf8; color: #2b3345; font-size: 26rpx; box-sizing: border-box;
+  background: rgba(238, 242, 251, 0.6); border: 1rpx solid rgba(228, 235, 251, 0.5);
+  color: #2b3448; font-size: 26rpx; box-sizing: border-box; line-height: 1.7;
 }
-.tag-row { display: flex; flex-wrap: wrap; gap: 10rpx; }
-.tag { padding: 10rpx 20rpx; border-radius: 999rpx; background: #eef2fb; color: #68748d; font-size: 22rpx; }
-.tag.active { background: #10b981; color: #fff; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.tag {
+  padding: 12rpx 22rpx; border-radius: 999rpx;
+  background: rgba(238, 242, 251, 0.7); color: #5f708e; font-size: 24rpx; font-weight: 600;
+  border: 1rpx solid rgba(228, 235, 251, 0.5); transition: all 0.25s ease;
+}
+.tag.active {
+  background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+  border-color: transparent; box-shadow: 0 4rpx 14rpx rgba(16, 185, 129, 0.3);
+}
 .submit-btn {
-  position: fixed; left: 24rpx; right: 24rpx; bottom: 40rpx; height: 88rpx; line-height: 88rpx;
+  position: fixed; left: 24rpx; right: 24rpx; bottom: calc(40rpx + env(safe-area-inset-bottom));
+  height: 88rpx; line-height: 88rpx;
   border-radius: 44rpx; border: none; background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff; font-size: 30rpx; font-weight: 600;
+  color: #fff; font-size: 30rpx; font-weight: 700;
+  box-shadow: 0 8rpx 24rpx rgba(16, 185, 129, 0.3); z-index: 100;
 }
 .submit-btn::after { border: none; }
 </style>

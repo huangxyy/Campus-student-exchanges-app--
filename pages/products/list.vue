@@ -1,7 +1,8 @@
 <template>
   <view class="products-page">
-    <view class="market-hero card anim-slide-down">
-      <view class="hero-title">校园好物市场</view>
+    <view class="market-hero glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="hero-deco"></view>
+      <view class="hero-title">🛒 校园好物市场</view>
       <view class="hero-sub">支持价格、成色、地图位置多维筛选，帮你更快找到目标商品</view>
       <view class="hero-pills">
         <text class="hero-pill">{{ total }} 件在售</text>
@@ -10,7 +11,7 @@
       </view>
     </view>
 
-    <view class="toolbar card anim-scale-in anim-d1">
+    <view class="toolbar glass-strong anim-scale-in anim-d1" style="border-radius: 24rpx;">
       <view class="search-row">
         <input
           v-model="keyword"
@@ -470,28 +471,29 @@ export default {
 
 <style lang="scss" scoped>
 .products-page {
-  padding: 20rpx;
+  position: relative;
+  padding: 24rpx;
   padding-bottom: 140rpx;
-  background:
-    radial-gradient(circle at 10% 5%, rgba(53, 121, 255, 0.10), rgba(53, 121, 255, 0) 50%),
-    radial-gradient(circle at 92% 18%, rgba(67, 210, 169, 0.08), rgba(67, 210, 169, 0) 45%),
-    #f2f5fc;
+  min-height: 100vh;
+  background: $page-bg;
 }
 
 .market-hero {
-  padding: 26rpx;
-  background:
-    linear-gradient(140deg, rgba(231, 239, 255, 0.96), rgba(245, 249, 255, 0.98)),
-    #ffffff;
-  border: 1rpx solid rgba(220, 235, 255, 0.7);
-  border-radius: 24rpx;
-  box-shadow: 0 6rpx 20rpx rgba(31, 38, 66, 0.05);
+  position: relative;
+  padding: 28rpx;
+  overflow: hidden;
+  margin-bottom: 4rpx;
+}
+.hero-deco {
+  position: absolute; top: -50rpx; right: -30rpx; width: 200rpx; height: 200rpx; border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.1), transparent); pointer-events: none;
 }
 
 .hero-title {
-  color: #1d2a40;
-  font-size: 34rpx;
-  font-weight: 700;
+  position: relative;
+  color: #1a2540;
+  font-size: 36rpx;
+  font-weight: 800;
 }
 
 .hero-sub {

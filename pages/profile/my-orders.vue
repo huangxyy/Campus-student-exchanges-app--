@@ -1,7 +1,8 @@
 <template>
   <view class="my-orders-page">
-    <view class="banner card anim-slide-down">
-      <view class="banner-title">我的订单</view>
+    <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="banner-deco"></view>
+      <view class="banner-title">📋 我的订单</view>
       <view class="banner-desc">查看交易进度，确认收货与评价</view>
     </view>
 
@@ -23,7 +24,8 @@
     <view
       v-for="(item, idx) in filteredList"
       :key="item.id"
-      :class="['order-card', 'card', 'card-press', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 1)) : '']"
+      :class="['order-card', 'glass-strong', 'card-press', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 1)) : '']"
+      style="border-radius: 22rpx;"
       @tap="goOrderDetail(item.id)"
     >
       <view class="order-head">
@@ -110,17 +112,39 @@ export default {
 
 <style lang="scss" scoped>
 .my-orders-page {
+  position: relative;
   padding: 24rpx;
   padding-bottom: 120rpx;
-  background: radial-gradient(circle at 50% 0%, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0) 60%), #f2f5fb;
+  min-height: 100vh;
+  background: $page-bg;
 }
-.banner { padding: 22rpx; background: linear-gradient(140deg, rgba(237, 242, 255, 0.96), rgba(248, 250, 255, 0.98)), #ffffff; border: 1rpx solid #e4ebfb; }
-.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 700; }
-.banner-desc { margin-top: 8rpx; color: #647188; font-size: 24rpx; }
+.banner {
+  position: relative;
+  padding: 24rpx;
+  margin-bottom: 4rpx;
+  overflow: hidden;
+}
+.banner-deco {
+  position: absolute;
+  top: -50rpx; right: -30rpx;
+  width: 180rpx; height: 180rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.08), transparent);
+  pointer-events: none;
+}
+.banner-title { position: relative; color: #1a2540; font-size: 34rpx; font-weight: 800; }
+.banner-desc { margin-top: 8rpx; color: #5a6a88; font-size: 24rpx; }
 .tab-row { margin: 16rpx 4rpx 10rpx; display: flex; gap: 10rpx; }
-.tab { padding: 10rpx 20rpx; border-radius: 999rpx; background: #eef2fb; color: #68748d; font-size: 22rpx; }
-.tab.active { background: #2f6bff; color: #fff; }
-.order-card { margin-bottom: 12rpx; padding: 20rpx; }
+.tab {
+  padding: 12rpx 22rpx; border-radius: 999rpx;
+  background: rgba(238, 242, 251, 0.7); color: #5f708e; font-size: 23rpx; font-weight: 600;
+  border: 1rpx solid rgba(228, 235, 251, 0.5); transition: all 0.25s ease;
+}
+.tab.active {
+  background: linear-gradient(135deg, #2f6bff, #5b8af5); color: #fff;
+  border-color: transparent; box-shadow: 0 4rpx 14rpx rgba(47, 107, 255, 0.25);
+}
+.order-card { margin-bottom: 14rpx; padding: 22rpx; }
 .order-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
 .order-title { color: #1f2430; font-size: 29rpx; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-chip { font-size: 20rpx; border-radius: 999rpx; padding: 6rpx 16rpx; flex-shrink: 0; }

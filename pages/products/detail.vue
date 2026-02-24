@@ -283,14 +283,42 @@ export default {
         return;
       }
 
-      if (this.product.status !== "available") {
-        uni.showToast({ title: "该商品已下架或已售出", icon: "none" });
+      uni.showLoading({ title: "检查商品状态..." });
+      try {
+        const latestProduct = await getProductById(this.product._id);
+        uni.hideLoading();
+
+        if (!latestProduct) {
+          uni.showToast({ title: "商品已不存在", icon: "none" });
+          this.product = null;
+          return;
+        }
+
+        this.product = latestProduct;
+
+        if (latestProduct.status === "reserved") {
+          uni.showToast({ title: "该商品已被其他买家预留", icon: "none" });
+          return;
+        }
+
+        if (latestProduct.status === "sold") {
+          uni.showToast({ title: "该商品已售出", icon: "none" });
+          return;
+        }
+
+        if (latestProduct.status !== "available") {
+          uni.showToast({ title: "该商品已下架或不可购买", icon: "none" });
+          return;
+        }
+      } catch (e) {
+        uni.hideLoading();
+        uni.showToast({ title: "商品状态检查失败，请重试", icon: "none" });
         return;
       }
 
       uni.showModal({
         title: "确认下单",
-        content: `确认购买「${this.product.title}」？价格 ¥${this.product.price}。下单后请与卖家约定面交时间。`,
+        content: `确认购买「${this.product.title}」？价格 ¥${this.product.price}。\n\n下单后商品将为你预留24小时，请及时与卖家约定面交。`,
         confirmText: "确认下单",
         success: async (res) => {
           if (!res.confirm) {

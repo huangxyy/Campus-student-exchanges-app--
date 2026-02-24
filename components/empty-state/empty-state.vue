@@ -7,10 +7,14 @@
       <view class="illust-dot dot-1 anim-float"></view>
       <view class="illust-dot dot-2 anim-float-x"></view>
       <view class="illust-dot dot-3 anim-breathe"></view>
+      <view class="illust-ring anim-ring"></view>
     </view>
     <view class="title anim-slide-up anim-d2">{{ title }}</view>
     <view class="desc anim-slide-up anim-d3">{{ description }}</view>
-    <button v-if="actionText" class="action btn-bounce anim-scale-in anim-d4" @tap="$emit('action')">{{ actionText }}</button>
+    <button v-if="actionText" class="action btn-bounce anim-scale-in anim-d4" @tap="$emit('action')">
+      <text class="action-icon">→</text>
+      {{ actionText }}
+    </button>
   </view>
 </template>
 
@@ -60,8 +64,16 @@ export default {
     position: absolute;
     top: 0; right: 0; bottom: 0; left: 0;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(47, 107, 255, 0.06), rgba(47, 107, 255, 0.01));
-    border: 2rpx dashed rgba(47, 107, 255, 0.12);
+    background: radial-gradient(circle, rgba(47, 107, 255, 0.08), rgba(47, 107, 255, 0.02));
+    border: 2rpx dashed rgba(47, 107, 255, 0.15);
+  }
+
+  .illust-ring {
+    position: absolute;
+    top: -10rpx; right: -10rpx; bottom: -10rpx; left: -10rpx;
+    border-radius: 50%;
+    border: none;
+    opacity: 0.5;
   }
 
   .illust-circle-sm {
@@ -125,7 +137,6 @@ export default {
     margin-top: 32rpx;
     width: 300rpx;
     height: 80rpx;
-    line-height: 80rpx;
     background: linear-gradient(135deg, #2f6bff, #5b8af5);
     color: #fff;
     border: none;
@@ -134,7 +145,18 @@ export default {
     font-weight: 600;
     box-shadow: 0 8rpx 28rpx rgba(47, 107, 255, 0.28);
     letter-spacing: 1rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
   }
   .action::after { border: none; }
+  .action-icon {
+    font-size: 26rpx;
+    transition: transform 0.2s ease;
+  }
+  .action:active .action-icon {
+    transform: translateX(6rpx);
+  }
 }
 </style>

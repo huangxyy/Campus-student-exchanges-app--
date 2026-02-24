@@ -1,7 +1,8 @@
 <template>
   <view class="my-want-page">
-    <view class="banner card anim-slide-down">
-      <view class="banner-title">我的求购</view>
+    <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="banner-deco"></view>
+      <view class="banner-title">🔍 我的求购</view>
       <view class="banner-desc">管理你发布的求购信息</view>
     </view>
 
@@ -16,7 +17,8 @@
     <view
       v-for="(item, idx) in list"
       :key="item.id"
-      :class="['want-card', 'card', 'card-press', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 1)) : '']"
+      :class="['want-card', 'glass-strong', 'card-press', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 1)) : '']"
+      style="border-radius: 22rpx;"
     >
       <view class="want-head">
         <view class="want-title">{{ item.title }}</view>
@@ -110,14 +112,29 @@ export default {
 
 <style lang="scss" scoped>
 .my-want-page {
+  position: relative;
   padding: 24rpx;
   padding-bottom: 120rpx;
-  background: radial-gradient(circle at 50% 0%, rgba(255, 139, 62, 0.06), rgba(255, 139, 62, 0) 60%), #f2f5fb;
+  min-height: 100vh;
+  background: $page-bg;
 }
-.banner { padding: 22rpx; background: linear-gradient(140deg, rgba(255, 248, 238, 0.96), rgba(255, 252, 248, 0.98)), #ffffff; border: 1rpx solid #f5e3cc; }
-.banner-title { color: #1f2636; font-size: 34rpx; font-weight: 700; }
-.banner-desc { margin-top: 8rpx; color: #647188; font-size: 24rpx; }
-.want-card { margin-top: 12rpx; padding: 20rpx; }
+.banner {
+  position: relative;
+  padding: 24rpx;
+  margin-bottom: 4rpx;
+  overflow: hidden;
+}
+.banner-deco {
+  position: absolute;
+  top: -50rpx; right: -30rpx;
+  width: 180rpx; height: 180rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 139, 62, 0.08), transparent);
+  pointer-events: none;
+}
+.banner-title { position: relative; color: #1a2540; font-size: 34rpx; font-weight: 800; }
+.banner-desc { margin-top: 8rpx; color: #5a6a88; font-size: 24rpx; }
+.want-card { margin-top: 14rpx; padding: 22rpx; }
 .want-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
 .want-title { color: #1f2430; font-size: 29rpx; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-tag { font-size: 20rpx; border-radius: 999rpx; padding: 4rpx 12rpx; flex-shrink: 0; }
@@ -129,8 +146,8 @@ export default {
 .want-foot { margin-top: 12rpx; display: flex; align-items: center; justify-content: space-between; }
 .match-count { color: #6e7b92; font-size: 22rpx; }
 .close-btn {
-  margin: 0; height: 48rpx; line-height: 48rpx; border-radius: 24rpx; border: none;
-  background: #ffeef1; color: #e74a62; font-size: 22rpx; padding: 0 20rpx;
+  margin: 0; height: 52rpx; line-height: 52rpx; border-radius: 26rpx; border: none;
+  background: linear-gradient(135deg, #fceff1, #ffe8ec); color: #e74a62; font-size: 23rpx; padding: 0 22rpx; font-weight: 600;
 }
 .close-btn::after { border: none; }
 .loading-text { margin-top: 40rpx; text-align: center; color: #8b95ab; font-size: 24rpx; }

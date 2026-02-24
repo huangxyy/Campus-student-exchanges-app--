@@ -1,5 +1,43 @@
 <template>
   <view class="home-page">
+    <!-- ========== Splash Screen 开屏加载界面 ========== -->
+    <view v-if="showSplash" :class="['splash-screen', splashFadingOut ? 'splash-fade-out' : '']">
+      <view class="splash-bg">
+        <view class="splash-orb splash-orb-1"></view>
+        <view class="splash-orb splash-orb-2"></view>
+        <view class="splash-orb splash-orb-3"></view>
+      </view>
+
+      <view class="splash-content">
+        <view class="splash-logo-group">
+          <view class="splash-ring splash-ring-outer"></view>
+          <view class="splash-ring splash-ring-inner"></view>
+          <view class="splash-icons">
+            <view class="splash-icon splash-icon-1">🛒</view>
+            <view class="splash-icon splash-icon-2">📌</view>
+            <view class="splash-icon splash-icon-3">💬</view>
+          </view>
+          <view class="splash-logo">🎓</view>
+        </view>
+
+        <view class="splash-text-group">
+          <view class="splash-title">校园跳蚤市场</view>
+          <view class="splash-sub">让闲置流动起来，让任务更高效</view>
+        </view>
+
+        <view class="splash-loader">
+          <view class="splash-loader-track">
+            <view class="splash-loader-fill"></view>
+          </view>
+          <view class="splash-loader-text">正在加载...</view>
+        </view>
+      </view>
+
+      <view class="splash-footer">
+        <view class="splash-footer-text">校园生活服务平台</view>
+      </view>
+    </view>
+
     <view class="page-orbs">
       <view class="orb orb-1 anim-float"></view>
       <view class="orb orb-2 anim-float-x"></view>
@@ -267,15 +305,13 @@ export default {
       this.showSplash = true;
       app.globalData.hasShownSplash = true;
 
-      // 1.5秒后开始渐隐升起
       setTimeout(() => {
         this.splashFadingOut = true;
-      }, 1500);
+      }, 2400);
 
-      // 2秒后完全移除 DOM
       setTimeout(() => {
         this.showSplash = false;
-      }, 2000);
+      }, 2900);
     }
   },
 
@@ -775,69 +811,221 @@ export default {
   100% { opacity: 0; transform: translateY(600rpx) rotate(360deg) scale(0.5); }
 }
 
-/* ---- Splash Screen 开屏动画 ---- */
+/* ========== Splash Screen 开屏加载界面 ========== */
 .splash-screen {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 9999;
-  background: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: #f2f5fc;
+  overflow: hidden;
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .splash-fade-out {
   opacity: 0;
-  transform: scale(1.05) translateY(-40rpx);
+  transform: scale(1.06) translateY(-40rpx);
   pointer-events: none;
 }
+
+.splash-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.splash-orb {
+  position: absolute;
+  border-radius: 50%;
+}
+.splash-orb-1 {
+  width: 500rpx; height: 500rpx;
+  top: -120rpx; left: -100rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.18), transparent 70%);
+  filter: blur(60rpx);
+  animation: splash-drift 3s ease-in-out infinite alternate;
+}
+.splash-orb-2 {
+  width: 400rpx; height: 400rpx;
+  bottom: -80rpx; right: -60rpx;
+  background: radial-gradient(circle, rgba(19, 194, 163, 0.16), transparent 70%);
+  filter: blur(50rpx);
+  animation: splash-drift 3.5s ease-in-out infinite alternate-reverse;
+}
+.splash-orb-3 {
+  width: 300rpx; height: 300rpx;
+  top: 40%; left: 50%;
+  margin-left: -150rpx;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.1), transparent 70%);
+  filter: blur(40rpx);
+  animation: splash-drift 4s ease-in-out infinite alternate;
+}
+
+@keyframes splash-drift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(20rpx, -20rpx); }
+}
+
 .splash-content {
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 48rpx;
 }
-.splash-icons {
-  display: flex;
-  gap: 30rpx;
-  margin-bottom: 50rpx;
-}
-.splash-icon {
-  width: 120rpx;
-  height: 120rpx;
-  background: linear-gradient(135deg, #f2f5fc, #ffffff);
-  border-radius: 40rpx;
+
+.splash-logo-group {
+  position: relative;
+  width: 200rpx;
+  height: 200rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 60rpx;
-  box-shadow: 0 16rpx 40rpx rgba(47, 107, 255, 0.1);
-  border: 2rpx solid rgba(255, 255, 255, 0.8);
 }
-.splash-text-wrap {
+.splash-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2rpx solid transparent;
+}
+.splash-ring-outer {
+  top: -12rpx; left: -12rpx; right: -12rpx; bottom: -12rpx;
+  border-color: rgba(47, 107, 255, 0.12);
+  animation: splash-spin 8s linear infinite;
+}
+.splash-ring-inner {
+  top: -4rpx; left: -4rpx; right: -4rpx; bottom: -4rpx;
+  border: 2rpx dashed rgba(19, 194, 163, 0.15);
+  animation: splash-spin 12s linear infinite reverse;
+}
+@keyframes splash-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.splash-icons {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+.splash-icon {
+  position: absolute;
+  width: 56rpx; height: 56rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1rpx solid rgba(228, 235, 251, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  box-shadow: 0 6rpx 16rpx rgba(31, 38, 66, 0.08);
+}
+.splash-icon-1 {
+  top: -16rpx; left: 50%; margin-left: -28rpx;
+  animation: splash-orbit-icon 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+.splash-icon-2 {
+  bottom: 0; left: -20rpx;
+  animation: splash-orbit-icon 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both;
+}
+.splash-icon-3 {
+  bottom: 0; right: -20rpx;
+  animation: splash-orbit-icon 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s both;
+}
+@keyframes splash-orbit-icon {
+  from { opacity: 0; transform: scale(0.3) translateY(30rpx); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.splash-logo {
+  position: relative;
+  width: 140rpx; height: 140rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 255, 0.9));
+  border: 2rpx solid rgba(228, 235, 251, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72rpx;
+  box-shadow:
+    0 12rpx 36rpx rgba(47, 107, 255, 0.12),
+    0 4rpx 12rpx rgba(31, 38, 66, 0.06);
+  animation: splash-logo-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+@keyframes splash-logo-in {
+  0%   { opacity: 0; transform: scale(0.2) rotate(-10deg); }
+  60%  { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.splash-text-group {
   text-align: center;
+  animation: splash-text-in 0.6s ease 0.5s both;
+}
+@keyframes splash-text-in {
+  from { opacity: 0; transform: translateY(30rpx); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .splash-title {
   font-size: 48rpx;
   font-weight: 800;
   color: #1a2540;
-  letter-spacing: 2rpx;
+  letter-spacing: 3rpx;
 }
 .splash-sub {
-  margin-top: 16rpx;
-  font-size: 28rpx;
-  color: #5a6a88;
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  color: #6a7e9a;
   letter-spacing: 1rpx;
 }
-.splash-blur {
+
+.splash-loader {
+  width: 360rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+  animation: splash-text-in 0.5s ease 0.8s both;
+}
+.splash-loader-track {
+  width: 100%;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: rgba(47, 107, 255, 0.08);
+  overflow: hidden;
+}
+.splash-loader-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: 3rpx;
+  background: linear-gradient(90deg, #2f6bff, #13c2a3);
+  animation: splash-progress 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.9s forwards;
+}
+@keyframes splash-progress {
+  0%   { width: 0%; }
+  30%  { width: 45%; }
+  60%  { width: 72%; }
+  85%  { width: 90%; }
+  100% { width: 100%; }
+}
+.splash-loader-text {
+  color: #8a95ac;
+  font-size: 22rpx;
+  letter-spacing: 1rpx;
+}
+
+.splash-footer {
   position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 500rpx; height: 500rpx;
-  background: radial-gradient(circle, rgba(47, 107, 255, 0.08), transparent 70%);
-  filter: blur(60rpx);
-  z-index: 1;
+  bottom: calc(60rpx + env(safe-area-inset-bottom));
+  left: 0; right: 0;
+  text-align: center;
+  z-index: 2;
+  animation: splash-text-in 0.5s ease 1s both;
+}
+.splash-footer-text {
+  color: #b0b8cc;
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
 }
 </style>

@@ -130,12 +130,17 @@ function getTaskCollection() {
   return db.collection("tasks");
 }
 
+function isExpressType(task) {
+  const type = task?.type === "代取" ? "代取快递" : task?.type;
+  return type === "代取快递";
+}
+
 function isTaskStatusTransitionAllowed(current, next) {
   if (current === "open") {
     return ["assigned", "cancelled"].includes(next);
   }
   if (current === "assigned") {
-    return ["picked_up", "delivered", "completed", "cancelled"].includes(next);
+    return ["picked_up", "delivered", "completed", "confirm_complete", "cancelled"].includes(next);
   }
   if (current === "picked_up") {
     return ["delivered", "cancelled"].includes(next);
@@ -159,7 +164,14 @@ function canOperateTask(task, operatorUserId, nextStatus) {
     return task.assignedUserId === operatorUserId;
   }
 
+  if (nextStatus === "confirm_complete") {
+    return task.publisherId === operatorUserId || task.assignedUserId === operatorUserId;
+  }
+
   if (nextStatus === "completed") {
+    if (isExpressType(task)) {
+      return task.publisherId === operatorUserId;
+    }
     return task.publisherId === operatorUserId || task.assignedUserId === operatorUserId;
   }
 
@@ -572,7 +584,35 @@ export async function getTaskUserStats(userId) {
   return getTaskUserStatsFromLocal(userId);
 }
 
+function applyDualConfirm(task, operatorUserId) {
+  const now = Date.now();
+  const isPublisher = task.publisherId === operatorUserId;
+  const isAssignee = task.assignedUserId === operatorUserId;
+
+  const patch = { updatedAt: now };
+  if (isPublisher) {
+    patch.confirmByPublisherAt = now;
+  }
+  if (isAssignee) {
+    patch.confirmByAssigneeAt = now;
+  }
+
+  const publisherConfirmed = patch.confirmByPublisherAt || task.confirmByPublisherAt;
+  const assigneeConfirmed = patch.confirmByAssigneeAt || task.confirmByAssigneeAt;
+
+  if (publisherConfirmed && assigneeConfirmed) {
+    patch.status = "completed";
+    patch.completedAt = now;
+  }
+
+  return patch;
+}
+
 export async function updateTaskStatus(taskId, status, operatorUserId) {
+  if (status === "confirm_complete") {
+    return handleDualConfirmComplete(taskId, operatorUserId);
+  }
+
   const cloudResult = await updateTaskStatusInCloud(taskId, status, operatorUserId).catch(() => null);
   if (typeof cloudResult === "boolean") {
     if (cloudResult && status === "completed") {
@@ -617,4 +657,47 @@ export async function updateTaskStatus(taskId, status, operatorUserId) {
 
   await wait();
   return true;
+}
+
+async function handleDualConfirmComplete(taskId, operatorUserId) {
+  const task = await getTaskById(taskId).catch(() => null);
+  if (!task || task.status !== "assigned") {
+    return false;
+  }
+
+  if (!canOperateTask(task, operatorUserId, "confirm_complete")) {
+    return false;
+  }
+
+  const patch = applyDualConfirm(task, operatorUserId);
+
+  const collection = getTaskCollection();
+  if (collection) {
+    const updateRes = await collection.doc(taskId).update({ data: patch }).catch(() => null);
+    if (updateRes && updateRes.stats && updateRes.stats.updated > 0) {
+      if (patch.status === "completed") {
+        addPoints("complete_task", taskId).catch(() => null);
+        recordTaskCompletion().catch(() => null);
+      }
+      return patch.status === "completed" ? true : "confirmed";
+    }
+  }
+
+  ensureTasks();
+  const list = readTasks();
+  const index = list.findIndex((item) => item.id === taskId);
+  if (index < 0) {
+    return false;
+  }
+
+  list.splice(index, 1, { ...list[index], ...patch });
+  saveTasks(list);
+
+  if (patch.status === "completed") {
+    addPoints("complete_task", taskId).catch(() => null);
+    recordTaskCompletion().catch(() => null);
+  }
+
+  await wait();
+  return patch.status === "completed" ? true : "confirmed";
 }

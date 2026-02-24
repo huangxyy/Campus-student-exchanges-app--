@@ -1,17 +1,30 @@
 <template>
   <view class="express-page">
-    <view class="banner card">
-      <view class="title">快递代取专区</view>
-      <view class="desc">校园高频场景，支持快速发单与抢单</view>
+    <view class="page-orbs">
+      <view class="orb orb-1 anim-float"></view>
+      <view class="orb orb-2 anim-float-x"></view>
+    </view>
+
+    <view class="banner glass-strong anim-slide-down" style="border-radius: 28rpx;">
+      <view class="banner-deco"></view>
+      <view class="banner-top">
+        <view>
+          <view class="title">📦 快递代取专区</view>
+          <view class="desc">校园高频场景，支持快速发单与抢单</view>
+        </view>
+      </view>
       <view class="banner-actions">
-        <button class="publish-btn" size="mini" @tap="quickPublish">快速发单</button>
-        <button class="refresh-btn" size="mini" @tap="loadTasks(true)">刷新列表</button>
+        <button class="publish-btn btn-bounce" size="mini" @tap="quickPublish">⚡ 快速发单</button>
+        <button class="refresh-btn btn-bounce" size="mini" @tap="loadTasks(true)">刷新列表</button>
       </view>
     </view>
 
-    <view class="hint">按截止最急优先排序，建议先处理紧急单</view>
+    <view class="hint anim-fade-in anim-d1">
+      <text class="hint-icon">💡</text>
+      按截止最急优先排序，建议先处理紧急单
+    </view>
 
-    <view class="task-card card" v-for="task in sortedList" :key="task.id" @tap="goTaskDetail(task.id)">
+    <view :class="['task-card', 'glass-strong', 'card-press', 'anim-slide-up', idx < 8 ? ('anim-d' + (idx + 2)) : '']" style="border-radius: 24rpx;" v-for="(task, idx) in sortedList" :key="task.id" @tap="goTaskDetail(task.id)">
       <view class="head">
         <view class="task-title">{{ task.title }}</view>
         <view class="reward">¥{{ task.reward }}</view>
@@ -201,65 +214,119 @@ export default {
 
 <style lang="scss" scoped>
 .express-page {
-  padding: 22rpx;
+  position: relative;
+  padding: 24rpx;
+  padding-bottom: 120rpx;
+  min-height: 100vh;
+  overflow: hidden;
+  background: $page-bg;
+}
+
+.page-orbs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40rpx);
+  opacity: 0.45;
+}
+.orb-1 {
+  width: 180rpx; height: 180rpx;
+  top: -20rpx; left: -30rpx;
+  background: radial-gradient(circle, rgba(250, 170, 50, 0.28), transparent 70%);
+}
+.orb-2 {
+  width: 140rpx; height: 140rpx;
+  top: 350rpx; right: -30rpx;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.2), transparent 70%);
 }
 
 .banner {
-  padding: 22rpx;
-  background: radial-gradient(circle at 90% 20%, rgba(245, 162, 66, 0.25), rgba(245, 162, 66, 0)), #fff;
+  position: relative;
+  padding: 28rpx;
+  margin-bottom: 4rpx;
+  overflow: hidden;
+}
+.banner-deco {
+  position: absolute;
+  top: -50rpx; right: -30rpx;
+  width: 180rpx; height: 180rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(250, 170, 50, 0.1), transparent);
+  pointer-events: none;
+}
+.banner-top {
+  position: relative;
 }
 
 .title {
-  color: #1f2534;
-  font-size: 34rpx;
-  font-weight: 700;
+  color: #1a2540;
+  font-size: 36rpx;
+  font-weight: 800;
 }
 
 .desc {
   margin-top: 8rpx;
-  color: #6f7c94;
+  color: #5a6a88;
   font-size: 24rpx;
 }
 
 .banner-actions {
-  margin-top: 14rpx;
+  margin-top: 18rpx;
   display: flex;
-  gap: 10rpx;
+  gap: 12rpx;
 }
 
 .publish-btn {
   margin: 0;
-  width: 180rpx;
-  height: 58rpx;
-  line-height: 58rpx;
-  border-radius: 30rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 28rpx;
+  border-radius: 32rpx;
   border: none;
-  background: #ff8b3e;
+  background: linear-gradient(135deg, #ff8b3e, #f1712d);
   color: #fff;
-  font-size: 22rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  box-shadow: 0 6rpx 18rpx rgba(241, 113, 45, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
 }
+.publish-btn::after { border: none; }
 
 .refresh-btn {
   margin: 0;
-  width: 180rpx;
-  height: 58rpx;
-  line-height: 58rpx;
-  border-radius: 30rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 28rpx;
+  border-radius: 32rpx;
   border: none;
-  background: #eef2fb;
+  background: rgba(238, 242, 251, 0.7);
   color: #3f4f6f;
-  font-size: 22rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  border: 1rpx solid rgba(228, 235, 251, 0.5);
 }
+.refresh-btn::after { border: none; }
 
 .hint {
-  margin: 14rpx 4rpx;
-  color: #8a93a7;
-  font-size: 22rpx;
+  margin: 16rpx 4rpx 12rpx;
+  color: #8a95ac;
+  font-size: 23rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
 }
+.hint-icon { font-size: 20rpx; }
 
 .task-card {
-  margin-bottom: 12rpx;
-  padding: 18rpx;
+  margin-bottom: 14rpx;
+  padding: 22rpx;
 }
 
 .head {
@@ -269,15 +336,24 @@ export default {
 }
 
 .task-title {
-  color: #202633;
-  font-size: 28rpx;
-  font-weight: 600;
+  color: #1a2540;
+  font-size: 29rpx;
+  font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reward {
-  color: #ef4e66;
+  color: #e74a62;
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff0f2, #ffedf1);
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
 }
 
 .meta {
@@ -300,10 +376,13 @@ export default {
 
 .urgent {
   border-radius: 999rpx;
-  padding: 4rpx 14rpx;
-  background: #ffe9ec;
+  padding: 6rpx 16rpx;
+  background: linear-gradient(135deg, #ffe4e8, #ffe9ec);
   color: #e34d63;
   font-size: 20rpx;
+  font-weight: 600;
+  animation: anim-pulse 2s ease-in-out infinite;
+  border: 1rpx solid rgba(227, 77, 99, 0.1);
 }
 
 .foot {
@@ -321,23 +400,27 @@ export default {
 .take-btn {
   margin: 0;
   min-width: 140rpx;
-  height: 54rpx;
-  line-height: 54rpx;
+  height: 56rpx;
+  line-height: 56rpx;
   border: none;
-  border-radius: 30rpx;
-  background: #ff8b3e;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #ff8b3e, #f1712d);
   color: #fff;
-  font-size: 22rpx;
+  font-size: 23rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 14rpx rgba(241, 113, 45, 0.25);
 }
+.take-btn::after { border: none; }
 
 .taken-tag {
   min-width: 140rpx;
-  height: 54rpx;
-  line-height: 54rpx;
+  height: 56rpx;
+  line-height: 56rpx;
   text-align: center;
-  border-radius: 30rpx;
-  background: #eef2fa;
+  border-radius: 28rpx;
+  background: rgba(238, 242, 251, 0.7);
   color: #68738b;
-  font-size: 22rpx;
+  font-size: 23rpx;
+  font-weight: 500;
 }
 </style>
