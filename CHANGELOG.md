@@ -38,6 +38,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - Week8：全量测试 + 提审上线
 
+### Week8 Progress
+
+- 生产构建验证通过：`npm run build:mp-weixin`。
+- 新增提审发布清单：`week8-release-checklist.md`（构建、回归、云环境、审核材料、发布收口）。
+
 ## [0.1.0] - 2026-02-15
 
 ### Added
