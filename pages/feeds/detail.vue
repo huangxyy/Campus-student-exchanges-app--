@@ -141,6 +141,7 @@ import ReportDialog from "@/components/report-dialog/report-dialog.vue";
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { getFeedById, toggleLike, deleteFeed, listComments, addComment } from "@/utils/feed-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: { EmptyState, ReportDialog },
@@ -213,7 +214,7 @@ export default {
         if (result === null) { this.feed = prev; }
       } catch (e) {
         this.feed = prev;
-        uni.showToast({ title: "操作失败", icon: "none" });
+        showError(e, { title: "操作失败" });
       }
     },
 
@@ -242,7 +243,7 @@ export default {
         this.comments = await listComments(this.feedId).catch(() => this.comments);
         this.feed = await getFeedById(this.feedId).catch(() => this.feed);
       } catch (error) {
-        uni.showToast({ title: "评论失败", icon: "none" });
+        showError(error, { title: "评论失败" });
       } finally {
         this.commentSubmitting = false;
       }
@@ -267,7 +268,7 @@ export default {
             uni.showToast({ title: "已删除", icon: "success" });
             setTimeout(() => { uni.navigateBack(); }, 600);
           } else {
-            uni.showToast({ title: "删除失败", icon: "none" });
+            showError("UNKNOWN", { title: "删除失败" });
           }
         }
       });

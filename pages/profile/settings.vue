@@ -90,6 +90,10 @@
         <text class="setting-label">清除缓存</text>
         <text class="arrow">›</text>
       </view>
+      <view class="setting-item" @tap="openAuditPage">
+        <text class="setting-label">风控审计台（调试）</text>
+        <text class="arrow">›</text>
+      </view>
     </view>
 
     <button class="logout-btn btn-bounce anim-slide-up anim-d5" @tap="handleLogout">
@@ -237,6 +241,14 @@ export default {
           uni.showToast({ title: "缓存已清除", icon: "success" });
         }
       });
+    },
+
+    openAuditPage() {
+      if (!this.userStore.isLogin) {
+        uni.showToast({ title: "请先登录", icon: "none" });
+        return;
+      }
+      uni.navigateTo({ url: "/pages/admin/audit" });
     },
 
     handleLogout() {

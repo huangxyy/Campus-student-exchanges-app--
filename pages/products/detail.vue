@@ -102,6 +102,7 @@ import { isProductFavorited, toggleFavorite } from "@/utils/favorite-service";
 import { createOrder } from "@/utils/order-service";
 import { submitReport, REPORT_REASONS } from "@/utils/report-service";
 import { addPoints } from "@/utils/points-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: {
@@ -195,7 +196,7 @@ export default {
       } catch (error) {
         this.product = null;
         this.favorited = false;
-        uni.showToast({ title: "商品加载失败", icon: "none" });
+        showError(error, { title: "商品加载失败" });
       } finally {
         this.loading = false;
       }
@@ -259,10 +260,7 @@ export default {
           url: `/pages/chat/detail?conversationId=${conversation.id}`
         });
       } catch (error) {
-        uni.showToast({
-          title: "打开会话失败",
-          icon: "none"
-        });
+        showError(error, { title: "打开会话失败" });
       }
     },
 
@@ -312,7 +310,7 @@ export default {
         }
       } catch (e) {
         uni.hideLoading();
-        uni.showToast({ title: "商品状态检查失败，请重试", icon: "none" });
+        showError(e, { title: "商品状态检查失败，请重试" });
         return;
       }
 
@@ -339,7 +337,7 @@ export default {
               uni.navigateTo({ url: `/pages/orders/detail?id=${order.id}` });
             }, 800);
           } catch (error) {
-            uni.showToast({ title: error?.message || "下单失败，请重试", icon: "none" });
+            showError(error, { title: "下单失败，请重试" });
           }
         }
       });
@@ -373,7 +371,7 @@ export default {
             });
             uni.showToast({ title: "举报已提交，感谢反馈", icon: "success" });
           } catch (error) {
-            uni.showToast({ title: error?.message || "举报失败", icon: "none" });
+            showError(error, { title: "举报失败" });
           }
         }
       });

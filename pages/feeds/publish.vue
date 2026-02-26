@@ -86,6 +86,7 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { publishFeed } from "@/utils/feed-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   data() {
@@ -129,6 +130,10 @@ export default {
     },
 
     async submit() {
+      if (!this.isLogin) {
+        uni.showToast({ title: "请先登录", icon: "none" });
+        return;
+      }
       if (!this.form.content.trim()) {
         uni.showToast({ title: "请输入内容", icon: "none" });
         return;
@@ -147,7 +152,7 @@ export default {
         uni.showToast({ title: "发布成功", icon: "success" });
         setTimeout(() => uni.navigateBack(), 500);
       } catch (error) {
-        uni.showToast({ title: "发布失败", icon: "none" });
+        showError(error);
       } finally {
         this.submitting = false;
       }

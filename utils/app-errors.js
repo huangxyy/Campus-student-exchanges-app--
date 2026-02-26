@@ -1,0 +1,17 @@
+export const APP_ERROR_CODES = {
+  RATE_LIMIT: "RATE_LIMIT",
+  DUPLICATE_SUBMIT: "DUPLICATE_SUBMIT",
+  STATUS_CONFLICT: "STATUS_CONFLICT",
+  INVALID_PARAM: "INVALID_PARAM",
+  INVALID_STATE: "INVALID_STATE",
+  PERMISSION_DENIED: "PERMISSION_DENIED",
+  AUTH_REQUIRED: "AUTH_REQUIRED",
+  NOT_FOUND: "NOT_FOUND",
+  UNKNOWN: "UNKNOWN"
+};
+
+export function createAppError(code, message) {
+  const err = new Error(message || "操作失败");
+  err.code = code || APP_ERROR_CODES.UNKNOWN;
+  return err;
+}

@@ -1,6 +1,7 @@
 import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const WIKI_KEY = "cm_wiki_articles";
 const DEFAULT_PAGE_SIZE = 20;
@@ -126,8 +127,8 @@ export async function getArticle(articleId) {
 
 export async function submitArticle(payload) {
   const userId = getCurrentUserId();
-  if (!userId) { throw new Error("User is not logged in"); }
-  if (_submitLock) { throw new Error("Submit in progress"); }
+  if (!userId) { throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in"); }
+  if (_submitLock) { throw createAppError(APP_ERROR_CODES.DUPLICATE_SUBMIT, "Submit in progress"); }
 
   _submitLock = true;
   try {

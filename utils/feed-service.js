@@ -2,6 +2,8 @@ import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/c
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 import { addPoints } from "@/utils/points-service";
+import { assertActionBurstLimit, assertActionRateLimit, assertTextLength } from "@/utils/risk-service";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const FEEDS_KEY = "cm_feeds";
 const COMMENTS_KEY = "cm_feed_comments";
@@ -212,8 +214,19 @@ export async function getFeedById(feedId) {
 
 export async function publishFeed(payload) {
   const userId = getCurrentUserId();
-  if (!userId) { throw new Error("User is not logged in"); }
-  if (_publishLock) { throw new Error("Publish in progress"); }
+  if (!userId) { throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in"); }
+  if (_publishLock) { throw createAppError(APP_ERROR_CODES.DUPLICATE_SUBMIT, "Publish in progress"); }
+
+  assertActionRateLimit(`feed:publish:${userId}`, {
+    intervalMs: 2500,
+    message: "发布过于频繁，请稍后再试"
+  });
+  assertActionBurstLimit(`feed:publish:target:${userId}`, {
+    windowMs: 10000,
+    maxCount: 4,
+    message: "发布过于频繁，请稍后再试"
+  });
+  assertTextLength(payload?.content || "", 500, "动态内容过长");
 
   _publishLock = true;
   try {
@@ -302,7 +315,18 @@ export async function listComments(feedId) {
 
 export async function addComment(payload) {
   const userId = getCurrentUserId();
-  if (!userId) { throw new Error("User is not logged in"); }
+  if (!userId) { throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in"); }
+
+  assertActionRateLimit(`feed:comment:${userId}:${payload?.feedId || ""}`, {
+    intervalMs: 1200,
+    message: "评论过于频繁，请稍后再试"
+  });
+  assertActionBurstLimit(`feed:comment:target:${userId}:${payload?.feedId || ""}`, {
+    windowMs: 10000,
+    maxCount: 5,
+    message: "评论过于频繁，请稍后再试"
+  });
+  assertTextLength(payload?.content || "", 500, "评论内容过长");
 
   const profile = getCurrentProfile();
   const fullPayload = {

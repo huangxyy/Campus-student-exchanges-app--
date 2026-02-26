@@ -73,6 +73,7 @@ import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { listWants } from "@/utils/want-service";
 import { createOrGetConversationByProduct } from "@/utils/chat-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: { EmptyState },
@@ -187,7 +188,7 @@ export default {
         const prefill = encodeURIComponent(`你好，我看到你的求购「${item.title}」，我有货可以聊聊。`);
         uni.navigateTo({ url: `/pages/chat/detail?conversationId=${conversation.id}&prefill=${prefill}` });
       } catch (error) {
-        uni.showToast({ title: "打开会话失败", icon: "none" });
+        showError(error, { title: "打开会话失败" });
       }
     }
   }

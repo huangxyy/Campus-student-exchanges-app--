@@ -39,6 +39,7 @@ import EmptyState from "@/components/empty-state/empty-state.vue";
 import ProductCard from "@/components/product-card/product-card.vue";
 import { useUserStore } from "@/store/user";
 import { listFavorites, removeFavorite } from "@/utils/favorite-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: {
@@ -78,7 +79,7 @@ export default {
         this.list = await listFavorites();
       } catch (error) {
         this.list = [];
-        uni.showToast({ title: "加载收藏失败", icon: "none" });
+        showError(error, { title: "加载收藏失败" });
       } finally {
         this.loading = false;
       }
@@ -99,10 +100,7 @@ export default {
     async handleRemove(item) {
       const ok = await removeFavorite(item._id);
       if (!ok) {
-        uni.showToast({
-          title: "取消失败",
-          icon: "none"
-        });
+        showError("UNKNOWN", { title: "取消失败" });
         return;
       }
       uni.showToast({

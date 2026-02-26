@@ -5,6 +5,9 @@ import { sanitizeText } from "@/utils/sanitize";
 import { addPoints } from "@/utils/points-service";
 import { recordOrderCompletion, recordOrderCancellation, updateAvgRating } from "@/utils/trust-service";
 import { updateProductStatus } from "@/utils/product-service";
+import { logAuditEvent } from "@/utils/audit-service";
+import { assertActionBurstLimit, assertActionRateLimit, assertTextLength } from "@/utils/risk-service";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const ORDERS_KEY = "cm_orders";
 const REVIEWS_KEY = "cm_reviews";
@@ -152,6 +155,12 @@ function hasActiveOrderForProduct(productId, excludeOrderId) {
   );
 }
 
+const inFlightOrderCreate = new Set();
+
+function getCreateOrderLockKey(productId, buyerId) {
+  return `order:create:${productId || "unknown"}:${buyerId || "anonymous"}`;
+}
+
 async function hasActiveOrderForProductInCloud(productId) {
   const collection = getOrderCollection();
   if (!collection) {
@@ -216,7 +225,7 @@ async function persistExpireCancellation(order) {
   }
 
   if (order.productId) {
-    updateProductStatus(order.productId, "available").catch(() => null);
+    updateProductStatus(order.productId, "available", { force: true }).catch(() => null);
   }
 }
 
@@ -289,7 +298,6 @@ async function updateOrderStatusInCloud(orderId, status, userId, extra = {}) {
   if (!collection) {
     throw new Error("Cloud database is unavailable");
   }
-
   const current = await getOrderFromCloud(orderId);
   if (!current) {
     return false;
@@ -329,7 +337,23 @@ async function updateOrderStatusInCloud(orderId, status, userId, extra = {}) {
     patch.cancelReason = extra.cancelReason || "";
   }
 
-  const res = await collection.doc(orderId).update({ data: patch }).catch(() => null);
+  const res = await collection
+    .where({
+      _id: orderId,
+      status: current.status,
+      updatedAt: Number(current.updatedAt || 0)
+    })
+    .update({ data: patch })
+    .catch(() => null);
+  if (!res || !res.stats || res.stats.updated <= 0) {
+    // 条件更新失败通常表示并发改动，回读后再判断是否已经处于目标状态
+    const latest = await collection.doc(orderId).get().catch(() => null);
+    const latestOrder = latest && latest.data ? normalizeOrder(latest.data) : null;
+    if (latestOrder && latestOrder.status === status) {
+      return true;
+    }
+    return false;
+  }
   return !!(res && res.stats && res.stats.updated > 0);
 }
 
@@ -346,7 +370,7 @@ async function submitReviewToCloud(payload) {
     .catch(() => null);
 
   if (existing && existing.data && existing.data.length > 0) {
-    throw new Error("Already reviewed");
+    throw createAppError(APP_ERROR_CODES.INVALID_STATE, "Already reviewed");
   }
 
   const now = Date.now();
@@ -407,53 +431,82 @@ async function computeUserAvgRating(userId) {
 export async function createOrder(payload) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
-  if (payload.productId) {
-    const cloudDup = await hasActiveOrderForProductInCloud(payload.productId).catch(() => false);
-    if (cloudDup) {
-      throw new Error("该商品已有进行中的订单");
-    }
-    if (hasActiveOrderForProduct(payload.productId)) {
-      throw new Error("该商品已有进行中的订单");
-    }
-  }
-
-  const profile = getCurrentProfile();
-  const fullPayload = {
-    ...payload,
-    buyerId: userId,
-    buyerName: profile.nickName || "买家"
-  };
-
-  const cloudOrder = await createOrderInCloud(fullPayload).catch(() => null);
-  if (cloudOrder) {
-    if (payload.productId) {
-      updateProductStatus(payload.productId, "reserved").catch(() => null);
-    }
-    return cloudOrder;
-  }
-
-  const now = Date.now();
-  const order = normalizeOrder({
-    ...fullPayload,
-    id: generateId("order"),
-    status: "pending",
-    expireAt: now + ORDER_EXPIRE_MS,
-    createdAt: now,
-    updatedAt: now
+  assertActionRateLimit(`order:create:${userId}:${payload?.productId || ""}`, {
+    intervalMs: 2500,
+    message: "下单过于频繁，请稍后再试"
   });
-  const list = readOrders();
-  list.unshift(order);
-  saveOrders(list);
 
-  if (payload.productId) {
-    updateProductStatus(payload.productId, "reserved").catch(() => null);
+  const lockKey = getCreateOrderLockKey(payload.productId, userId);
+  if (inFlightOrderCreate.has(lockKey)) {
+    throw createAppError(APP_ERROR_CODES.DUPLICATE_SUBMIT, "请勿重复下单，订单正在创建中");
   }
+  inFlightOrderCreate.add(lockKey);
 
-  await wait();
-  return order;
+  try {
+    if (payload.productId) {
+      const cloudDup = await hasActiveOrderForProductInCloud(payload.productId).catch(() => false);
+      if (cloudDup) {
+        throw createAppError(APP_ERROR_CODES.INVALID_STATE, "该商品已有进行中的订单");
+      }
+      if (hasActiveOrderForProduct(payload.productId)) {
+        throw createAppError(APP_ERROR_CODES.INVALID_STATE, "该商品已有进行中的订单");
+      }
+    }
+
+    const profile = getCurrentProfile();
+    const fullPayload = {
+      ...payload,
+      buyerId: userId,
+      buyerName: profile.nickName || "买家"
+    };
+
+    const cloudOrder = await createOrderInCloud(fullPayload).catch(() => null);
+    if (cloudOrder) {
+      if (payload.productId) {
+        updateProductStatus(payload.productId, "reserved", { force: true }).catch(() => null);
+      }
+      logAuditEvent("order_create_success", {
+        orderId: cloudOrder.id,
+        productId: cloudOrder.productId,
+        buyerId: cloudOrder.buyerId,
+        sellerId: cloudOrder.sellerId,
+        channel: "cloud"
+      }).catch(() => null);
+      return cloudOrder;
+    }
+
+    const now = Date.now();
+    const order = normalizeOrder({
+      ...fullPayload,
+      id: generateId("order"),
+      status: "pending",
+      expireAt: now + ORDER_EXPIRE_MS,
+      createdAt: now,
+      updatedAt: now
+    });
+    const list = readOrders();
+    list.unshift(order);
+    saveOrders(list);
+
+    if (payload.productId) {
+      updateProductStatus(payload.productId, "reserved", { force: true }).catch(() => null);
+    }
+
+    logAuditEvent("order_create_success", {
+      orderId: order.id,
+      productId: order.productId,
+      buyerId: order.buyerId,
+      sellerId: order.sellerId,
+      channel: "local"
+    }).catch(() => null);
+    await wait();
+    return order;
+  } finally {
+    inFlightOrderCreate.delete(lockKey);
+  }
 }
 
 export async function listMyOrders() {
@@ -517,6 +570,15 @@ export async function updateOrderStatus(orderId, status, extra = {}) {
   if (!userId) {
     return false;
   }
+  assertActionRateLimit(`order:status:${userId}:${orderId}:${status}`, {
+    intervalMs: 1000,
+    message: "操作过于频繁，请稍后再试"
+  });
+  assertActionBurstLimit(`order:status:target:${userId}:${orderId}`, {
+    windowMs: 10000,
+    maxCount: 5,
+    message: "订单操作过于频繁，请稍后再试"
+  });
 
   const orderForSideEffects = await getOrder(orderId).catch(() => null);
 
@@ -524,6 +586,23 @@ export async function updateOrderStatus(orderId, status, extra = {}) {
   if (typeof cloudResult === "boolean") {
     if (cloudResult) {
       handleStatusSideEffects(status, orderId, orderForSideEffects, userId, extra);
+      logAuditEvent("order_status_changed", {
+        orderId,
+        fromStatus: orderForSideEffects?.status || "",
+        toStatus: status,
+        operatorUserId: userId,
+        cancelReason: extra.cancelReason || "",
+        channel: "cloud"
+      }).catch(() => null);
+    } else {
+      logAuditEvent("order_status_change_rejected", {
+        orderId,
+        fromStatus: orderForSideEffects?.status || "",
+        toStatus: status,
+        operatorUserId: userId,
+        reason: "cloud_condition_conflict_or_invalid"
+      }).catch(() => null);
+      return false;
     }
     return cloudResult;
   }
@@ -531,6 +610,12 @@ export async function updateOrderStatus(orderId, status, extra = {}) {
   const list = readOrders();
   const idx = list.findIndex((item) => item.id === orderId);
   if (idx < 0) {
+    logAuditEvent("order_status_change_rejected", {
+      orderId,
+      toStatus: status,
+      operatorUserId: userId,
+      reason: "order_not_found_local"
+    }).catch(() => null);
     return false;
   }
 
@@ -541,15 +626,29 @@ export async function updateOrderStatus(orderId, status, extra = {}) {
     list.splice(idx, 1, expired);
     saveOrders(list);
     if (current.productId) {
-      updateProductStatus(current.productId, "available").catch(() => null);
+      updateProductStatus(current.productId, "available", { force: true }).catch(() => null);
     }
     return false;
   }
 
   if (!isOrderTransitionAllowed(current.status, status)) {
+    logAuditEvent("order_status_change_rejected", {
+      orderId,
+      fromStatus: current.status,
+      toStatus: status,
+      operatorUserId: userId,
+      reason: "transition_not_allowed"
+    }).catch(() => null);
     return false;
   }
   if (!canOperateOrder(current, userId, status)) {
+    logAuditEvent("order_status_change_rejected", {
+      orderId,
+      fromStatus: current.status,
+      toStatus: status,
+      operatorUserId: userId,
+      reason: "permission_denied"
+    }).catch(() => null);
     return false;
   }
 
@@ -578,6 +677,14 @@ export async function updateOrderStatus(orderId, status, extra = {}) {
   saveOrders(list);
 
   handleStatusSideEffects(status, orderId, current, userId, extra);
+  logAuditEvent("order_status_changed", {
+    orderId,
+    fromStatus: current.status,
+    toStatus: status,
+    operatorUserId: userId,
+    cancelReason: extra.cancelReason || "",
+    channel: "local"
+  }).catch(() => null);
 
   await wait();
   return true;
@@ -588,13 +695,13 @@ function handleStatusSideEffects(status, orderId, order, userId, extra = {}) {
     addPoints("complete_order", orderId).catch(() => null);
     recordOrderCompletion().catch(() => null);
     if (order && order.productId) {
-      updateProductStatus(order.productId, "sold").catch(() => null);
+      updateProductStatus(order.productId, "sold", { force: true }).catch(() => null);
     }
   }
 
   if (status === "cancelled") {
     if (order && order.productId) {
-      updateProductStatus(order.productId, "available").catch(() => null);
+      updateProductStatus(order.productId, "available", { force: true }).catch(() => null);
     }
     const wasPaid = order && (order.status === "paid_confirmed" || order.paidConfirmedAt);
     if (wasPaid) {
@@ -606,13 +713,19 @@ function handleStatusSideEffects(status, orderId, order, userId, extra = {}) {
 export async function submitReview(payload) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
+
+  assertActionRateLimit(`order:review:${userId}:${payload?.orderId || ""}`, {
+    intervalMs: 2000,
+    message: "评价提交过于频繁，请稍后再试"
+  });
+  assertTextLength(payload?.content || "", 500, "评价内容过长");
 
   if (payload.orderId) {
     const order = await getOrder(payload.orderId).catch(() => null);
     if (order && order.status !== "completed") {
-      throw new Error("订单尚未完成，无法评价");
+      throw createAppError(APP_ERROR_CODES.INVALID_STATE, "订单尚未完成，无法评价");
     }
   }
 
@@ -635,7 +748,7 @@ export async function submitReview(payload) {
     (r) => r.orderId === fullPayload.orderId && r.fromUserId === fullPayload.fromUserId
   );
   if (alreadyReviewed) {
-    throw new Error("Already reviewed");
+    throw createAppError(APP_ERROR_CODES.INVALID_STATE, "Already reviewed");
   }
 
   const review = normalizeReview({

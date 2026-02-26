@@ -98,6 +98,7 @@ import {
   watchConversationMessages
 } from "@/utils/chat-service";
 import { useUserStore } from "@/store/user";
+import { showError } from "@/utils/error-handler";
 
 export default {
   data() {
@@ -202,7 +203,7 @@ export default {
         this.startRealtimeSync();
       } catch (error) {
         console.warn("[ChatDetail] loadConversation failed:", error);
-        uni.showToast({ title: "加载会话失败", icon: "none" });
+        showError(error, { title: "加载会话失败" });
       }
     },
 
@@ -418,7 +419,7 @@ export default {
         this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
       } catch (error) {
         this.markMessageFailed(tempId);
-        uni.showToast({ title: "发送失败，请重试", icon: "none" });
+        showError(error, { title: "发送失败，请重试" });
       } finally {
         this.sendingText = false;
         this.scrollToBottom();
@@ -448,7 +449,7 @@ export default {
             this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
           } catch (error) {
             this.markMessageFailed(tempId);
-            uni.showToast({ title: "图片发送失败", icon: "none" });
+            showError(error, { title: "图片发送失败" });
           } finally {
             this.sendingImage = false;
             this.scrollToBottom();
@@ -550,7 +551,7 @@ export default {
             this.messages = await getConversationMessages(this.conversationId, { limit: 120 });
           } catch (error) {
             this.markMessageFailed(tempId);
-            uni.showToast({ title: "卡片发送失败", icon: "none" });
+            showError(error, { title: "卡片发送失败" });
           } finally {
             this.sendingCard = false;
             this.scrollToBottom();

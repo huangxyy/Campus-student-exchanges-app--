@@ -7,11 +7,24 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- 新增风控审计调试页 `pages/admin/audit`，支持审计日志筛选、聚合统计与 JSON/CSV 导出（复制到剪贴板）。
+- 新增统一应用错误模型 `utils/app-errors.js`，提供标准错误码与 `createAppError()`。
+- 新增上线前验收清单 `docs/acceptance-checklist.md`，供测试/自查勾选。
+- 到货提醒：`getArrivalAlerts()`、`markArrivalAlertRead()`、云集合 `arrival_alerts` 与本地回退；云函数 `matchAndNotifyWants`（商品上架后匹配求购并为订阅用户写入到货提醒）。
+
+### Changed
+
+- 交易/任务核心链路补强并发一致性：云端状态更新采用条件更新（状态+更新时间）并在冲突时回读判定。
+- 增加关键业务审计埋点（下单、订单状态流转、接单、任务状态流转、举报）并提供查询能力。
+- 增加统一风控限流策略（短间隔限流 + 时间窗爆发限流），覆盖下单、评论、举报、任务状态操作等高频写入场景。
+- 页面错误提示统一收敛到 `showError()`，提升提示一致性与可维护性；积分页签到失败分支改为使用 `showError()`。
+- Week 4：求购列表云端过滤过期（`validUntil`）；商品发布成功后触发 `fireMatchAndNotifyWants(productId)`；到货提醒页新增「匹配到你的新商品」列表与已读跳转。
+
 ### Planned
 
-- Week3 收口：任务实时提示、快递链路一致性、聊天稳定性
-- Week4：求购广场 + 到货提醒 + 订单系统
-- Week5：校园动态 + 积分体系 + 举报流程
+- Week5：校园动态 + 积分体系 + 排行榜
 - Week6：校园维基 + 活动专题 + 个人中心增强
 - Week7：性能优化 + 安全治理 + 信任体系
 - Week8：全量测试 + 提审上线

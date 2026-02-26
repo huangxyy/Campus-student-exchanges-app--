@@ -577,7 +577,8 @@ export async function queryProductsByUser(userId, options = {}) {
   return { list, total, noMore: start + list.length >= total };
 }
 
-async function updateProductStatusInCloud(productId, status, userId) {
+async function updateProductStatusInCloud(productId, status, userId, options = {}) {
+  const force = !!options.force;
   const db = getCloudDatabase();
   if (!db) {
     throw new Error("Cloud database is unavailable");
@@ -585,7 +586,7 @@ async function updateProductStatusInCloud(productId, status, userId) {
 
   const productRes = await db.collection("products").doc(productId).get();
   const ownerId = productRes?.data?.userId;
-  if (ownerId && ownerId !== userId) {
+  if (!force && ownerId && ownerId !== userId) {
     console.warn("[ProductService] updateProductStatusInCloud: permission denied");
     return false;
   }
@@ -614,18 +615,19 @@ function isProductTransitionAllowed(from, to) {
   return allowed.includes(to);
 }
 
-export async function updateProductStatus(productId, status) {
+export async function updateProductStatus(productId, status, options = {}) {
   if (!productId || !status) {
     return false;
   }
 
+  const force = !!options.force;
   const userId = getCurrentUserId();
-  if (!userId) {
+  if (!userId && !force) {
     return false;
   }
 
   const product = getAllProducts().find((p) => p._id === productId);
-  if (product && product.userId && product.userId !== userId) {
+  if (!force && product && product.userId && product.userId !== userId) {
     console.warn("[ProductService] updateProductStatus: permission denied");
     return false;
   }
@@ -637,7 +639,7 @@ export async function updateProductStatus(productId, status) {
   if (isCloudDatabaseReady()) {
     const cloudUpdated = await safeCloudCall(
       "ProductService.updateProductStatus",
-      () => updateProductStatusInCloud(productId, status, userId),
+      () => updateProductStatusInCloud(productId, status, force ? null : userId, { force }),
       {
         fallbackValue: false,
         onError: (error) => logCloudFallback("updateProductStatus", error)

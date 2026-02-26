@@ -12,6 +12,10 @@ const ERROR_MAP = {
   NOT_FOUND: { title: "内容不存在", desc: "该内容已被删除或不可见" },
   AUTH_REQUIRED: { title: "请先登录", desc: "此操作需要登录后才能使用" },
   DUPLICATE_SUBMIT: { title: "请勿重复提交", desc: "你的请求正在处理中" },
+  RATE_LIMIT: { title: "操作频繁", desc: "请稍后再试" },
+  STATUS_CONFLICT: { title: "状态冲突", desc: "当前数据已变化，已建议刷新后重试" },
+  INVALID_PARAM: { title: "参数错误", desc: "提交的数据格式不正确" },
+  INVALID_STATE: { title: "状态不合法", desc: "当前状态下无法执行该操作" },
   CLOUD_UNAVAILABLE: { title: "云服务暂不可用", desc: "已切换到本地模式" },
   UNKNOWN: { title: "操作失败", desc: "发生未知错误，请稍后重试" }
 };
@@ -19,6 +23,10 @@ const ERROR_MAP = {
 export function classifyError(error) {
   if (!error) {
     return "UNKNOWN";
+  }
+
+  if (typeof error === "object" && error.code && ERROR_MAP[error.code]) {
+    return error.code;
   }
 
   const msg = (error.message || error.errMsg || String(error)).toLowerCase();

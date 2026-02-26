@@ -81,6 +81,7 @@
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { checkin, getCheckinStatus, getMyPoints, getPointsRules } from "@/utils/points-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   data() {
@@ -132,8 +133,11 @@ export default {
         uni.showToast({ title: `签到成功 +5 积分`, icon: "success" });
         this.pointsData = await getMyPoints().catch(() => this.pointsData);
       } catch (error) {
-        const msg = error?.message === "Already checked in today" ? "今天已签到" : "签到失败";
-        uni.showToast({ title: msg, icon: "none" });
+        if (error?.message === "Already checked in today") {
+          uni.showToast({ title: "今天已签到", icon: "none" });
+        } else {
+          showError(error, { title: "签到失败" });
+        }
       }
     },
 

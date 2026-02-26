@@ -59,6 +59,7 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { publishWant } from "@/utils/want-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   data() {
@@ -134,7 +135,7 @@ export default {
         uni.showToast({ title: "发布成功", icon: "success" });
         setTimeout(() => uni.navigateBack(), 500);
       } catch (error) {
-        uni.showToast({ title: "发布失败，请重试", icon: "none" });
+        showError(error, { title: "发布失败，请重试" });
       } finally {
         this.submitting = false;
       }

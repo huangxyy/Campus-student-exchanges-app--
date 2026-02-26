@@ -127,6 +127,7 @@
 import EmptyState from "@/components/empty-state/empty-state.vue";
 import { useUserStore } from "@/store/user";
 import { listMyTasks, updateTaskStatus } from "@/utils/task-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: {
@@ -260,7 +261,7 @@ export default {
         this.publishedList = res.published || [];
         this.acceptedList = res.accepted || [];
       } catch (error) {
-        uni.showToast({ title: "加载任务失败", icon: "none" });
+        showError(error, { title: "加载任务失败" });
       } finally {
         this.loading = false;
       }
@@ -319,10 +320,7 @@ export default {
           }
           const ok = await updateTaskStatus(item.id, status, this.profile.userId);
           if (!ok) {
-            uni.showToast({
-              title: "操作失败",
-              icon: "none"
-            });
+            showError("UNKNOWN", { title: "操作失败" });
             return;
           }
           uni.showToast({

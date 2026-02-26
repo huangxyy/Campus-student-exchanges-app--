@@ -1,6 +1,9 @@
 import { getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
+import { logAuditEvent } from "@/utils/audit-service";
+import { assertActionBurstLimit, assertActionRateLimit, assertTextLength } from "@/utils/risk-service";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const REPORTS_KEY = "cm_reports";
 const REPORT_DEDUP_KEY = "cm_report_dedup";
@@ -64,7 +67,18 @@ async function submitReportToCloud(payload) {
 
 export async function submitReport(payload) {
   const userId = getCurrentUserId();
-  if (!userId) { throw new Error("User is not logged in"); }
+  if (!userId) { throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in"); }
+
+  assertActionRateLimit(`report:submit:${userId}:${payload?.targetType || ""}:${payload?.targetId || ""}`, {
+    intervalMs: 3000,
+    message: "举报提交过于频繁，请稍后再试"
+  });
+  assertActionBurstLimit(`report:submit:target:${userId}:${payload?.targetType || ""}:${payload?.targetId || ""}`, {
+    windowMs: 60000,
+    maxCount: 3,
+    message: "举报提交过于频繁，请稍后再试"
+  });
+  assertTextLength(payload?.detail || "", 500, "举报详情过长");
 
   const fullPayload = {
     ...payload,
@@ -73,16 +87,23 @@ export async function submitReport(payload) {
   };
 
   if (!fullPayload.targetType || !fullPayload.targetId || !fullPayload.reason) {
-    throw new Error("Missing required report fields");
+    throw createAppError(APP_ERROR_CODES.INVALID_PARAM, "Missing required report fields");
   }
 
   if (hasDuplicateReport(userId, fullPayload.targetType, fullPayload.targetId)) {
-    throw new Error("您已举报过该内容，请勿重复提交");
+    throw createAppError(APP_ERROR_CODES.INVALID_STATE, "您已举报过该内容，请勿重复提交");
   }
 
   const cloudReport = await submitReportToCloud(fullPayload).catch(() => null);
   if (cloudReport) {
     markReported(userId, fullPayload.targetType, fullPayload.targetId);
+    logAuditEvent("report_submitted", {
+      reportId: cloudReport.id,
+      targetType: cloudReport.targetType,
+      targetId: cloudReport.targetId,
+      reporterId: userId,
+      channel: "cloud"
+    }).catch(() => null);
     return cloudReport;
   }
 
@@ -101,6 +122,13 @@ export async function submitReport(payload) {
   }
 
   markReported(userId, fullPayload.targetType, fullPayload.targetId);
+  logAuditEvent("report_submitted", {
+    reportId: report.id,
+    targetType: report.targetType,
+    targetId: report.targetId,
+    reporterId: userId,
+    channel: "local"
+  }).catch(() => null);
   await wait();
   return report;
 }

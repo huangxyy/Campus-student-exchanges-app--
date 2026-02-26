@@ -4,6 +4,8 @@ import { generateId } from "@/utils/common";
 import { sanitizeText } from "@/utils/sanitize";
 import { addPoints } from "@/utils/points-service";
 import { recordTaskCompletion } from "@/utils/trust-service";
+import { logAuditEvent } from "@/utils/audit-service";
+import { assertActionBurstLimit, assertActionRateLimit, assertTextLength } from "@/utils/risk-service";
 
 const TASK_KEY = "cm_tasks";
 
@@ -378,7 +380,11 @@ async function updateTaskStatusInCloud(taskId, status, operatorUserId) {
   };
 
   const updateRes = await collection
-    .doc(taskId)
+    .where({
+      _id: taskId,
+      status: current.status,
+      updatedAt: Number(current.updatedAt || 0)
+    })
     .update({
       data: {
         status,
@@ -387,6 +393,12 @@ async function updateTaskStatusInCloud(taskId, status, operatorUserId) {
       }
     })
     .catch(() => null);
+
+  if (!updateRes || !updateRes.stats || updateRes.stats.updated <= 0) {
+    const latestRes = await collection.doc(taskId).get().catch(() => null);
+    const latest = normalizeTask(latestRes?.data || {});
+    return !!(latest.id && latest.status === status);
+  }
 
   return !!(updateRes && updateRes.stats && updateRes.stats.updated > 0);
 }
@@ -475,6 +487,13 @@ export async function getTaskById(taskId) {
 }
 
 export async function publishTask(payload) {
+  assertActionRateLimit(`task:publish:${payload?.publisherId || ""}`, {
+    intervalMs: 2500,
+    message: "任务发布过于频繁，请稍后再试"
+  });
+  assertTextLength(payload?.title || "", 40, "任务标题过长");
+  assertTextLength(payload?.description || "", 300, "任务描述过长");
+
   const cloudTask = await publishTaskToCloud(payload).catch(() => null);
   if (cloudTask) {
     addPoints("publish_task", cloudTask.id).catch(() => null);
@@ -517,6 +536,14 @@ export async function publishTask(payload) {
 export async function takeTask(taskId, userName, userId) {
   const cloudResult = await takeTaskInCloud(taskId, userName, userId).catch(() => null);
   if (typeof cloudResult === "boolean") {
+    if (cloudResult) {
+      logAuditEvent("task_taken", {
+        taskId,
+        userId: userId || "",
+        userName: userName || "",
+        channel: "cloud"
+      }).catch(() => null);
+    }
     return cloudResult;
   }
 
@@ -543,6 +570,12 @@ export async function takeTask(taskId, userName, userId) {
     updatedAt: Date.now()
   });
   saveTasks(list);
+  logAuditEvent("task_taken", {
+    taskId,
+    userId: userId || "",
+    userName: userName || "",
+    channel: "local"
+  }).catch(() => null);
   await wait();
   return true;
 }
@@ -609,6 +642,16 @@ function applyDualConfirm(task, operatorUserId) {
 }
 
 export async function updateTaskStatus(taskId, status, operatorUserId) {
+  assertActionRateLimit(`task:status:${operatorUserId || ""}:${taskId}:${status}`, {
+    intervalMs: 900,
+    message: "操作过于频繁，请稍后再试"
+  });
+  assertActionBurstLimit(`task:status:target:${operatorUserId || ""}:${taskId}`, {
+    windowMs: 10000,
+    maxCount: 6,
+    message: "任务操作过于频繁，请稍后再试"
+  });
+
   if (status === "confirm_complete") {
     return handleDualConfirmComplete(taskId, operatorUserId);
   }
@@ -618,6 +661,16 @@ export async function updateTaskStatus(taskId, status, operatorUserId) {
     if (cloudResult && status === "completed") {
       addPoints("complete_task", taskId).catch(() => null);
       recordTaskCompletion().catch(() => null);
+    }
+    if (cloudResult) {
+      const currentTask = await getTaskById(taskId).catch(() => null);
+      logAuditEvent("task_status_changed", {
+        taskId,
+        toStatus: status,
+        operatorUserId: operatorUserId || "",
+        taskType: currentTask?.type || "",
+        channel: "cloud"
+      }).catch(() => null);
     }
     return cloudResult;
   }
@@ -655,6 +708,15 @@ export async function updateTaskStatus(taskId, status, operatorUserId) {
     recordTaskCompletion().catch(() => null);
   }
 
+  logAuditEvent("task_status_changed", {
+    taskId,
+    fromStatus: current.status,
+    toStatus: status,
+    operatorUserId: operatorUserId || "",
+    taskType: current.type || "",
+    channel: "local"
+  }).catch(() => null);
+
   await wait();
   return true;
 }
@@ -673,13 +735,38 @@ async function handleDualConfirmComplete(taskId, operatorUserId) {
 
   const collection = getTaskCollection();
   if (collection) {
-    const updateRes = await collection.doc(taskId).update({ data: patch }).catch(() => null);
+    const updateRes = await collection
+      .where({
+        _id: taskId,
+        status: task.status,
+        updatedAt: Number(task.updatedAt || 0)
+      })
+      .update({ data: patch })
+      .catch(() => null);
     if (updateRes && updateRes.stats && updateRes.stats.updated > 0) {
       if (patch.status === "completed") {
         addPoints("complete_task", taskId).catch(() => null);
         recordTaskCompletion().catch(() => null);
       }
+      logAuditEvent("task_dual_confirm", {
+        taskId,
+        operatorUserId: operatorUserId || "",
+        resultStatus: patch.status || "assigned",
+        channel: "cloud"
+      }).catch(() => null);
       return patch.status === "completed" ? true : "confirmed";
+    }
+
+    const latestRes = await collection.doc(taskId).get().catch(() => null);
+    const latestTask = normalizeTask(latestRes?.data || {});
+    if (latestTask.id) {
+      if (latestTask.status === "completed") {
+        return true;
+      }
+      if (latestTask.confirmByAssigneeAt || latestTask.confirmByPublisherAt) {
+        return "confirmed";
+      }
+      return false;
     }
   }
 
@@ -697,6 +784,13 @@ async function handleDualConfirmComplete(taskId, operatorUserId) {
     addPoints("complete_task", taskId).catch(() => null);
     recordTaskCompletion().catch(() => null);
   }
+
+  logAuditEvent("task_dual_confirm", {
+    taskId,
+    operatorUserId: operatorUserId || "",
+    resultStatus: patch.status || "assigned",
+    channel: "local"
+  }).catch(() => null);
 
   await wait();
   return patch.status === "completed" ? true : "confirmed";

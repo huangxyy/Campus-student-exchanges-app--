@@ -2,6 +2,7 @@ import { getCurrentProfile, getCurrentUserId, wait, generateId, createThrottledS
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
 import { safeCloudCall } from "@/utils/cloud-call";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const throttledStorage = createThrottledStorage(200);
 
@@ -669,7 +670,7 @@ export function watchConversations(handlers = {}) {
 export async function createOrGetConversationByProduct(payload) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
   const { productId, productTitle, peerId, peerName, peerAvatar, topicType = "product" } = payload;
@@ -853,7 +854,7 @@ export async function markConversationRead(conversationId) {
 export async function sendTextMessage(conversationId, content) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
   const safeContent = sanitizeText(content, { maxLength: 2000 });
@@ -888,12 +889,12 @@ export async function sendTextMessage(conversationId, content) {
 async function sendCardMessage(conversationId, type, cardPayload) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
   const safePayload = sanitizeCardPayload(cardPayload);
   if (!safePayload.id || !safePayload.title) {
-    throw new Error("Card payload is invalid");
+    throw createAppError(APP_ERROR_CODES.INVALID_PARAM, "Card payload is invalid");
   }
 
   const preview = getCardPreview(type);
@@ -1023,12 +1024,12 @@ export async function deleteConversation(conversationId) {
 export async function sendImageMessage(conversationId, imageUrl) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
   const safeUrl = String(imageUrl || "").trim();
   if (!safeUrl) {
-    throw new Error("Image URL is required");
+    throw createAppError(APP_ERROR_CODES.INVALID_PARAM, "Image URL is required");
   }
 
   const preview = "[图片]";

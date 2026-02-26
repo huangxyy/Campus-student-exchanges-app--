@@ -43,6 +43,7 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { submitArticle } from "@/utils/wiki-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   data() {
@@ -93,7 +94,7 @@ export default {
         uni.showToast({ title: "投稿成功，待审核", icon: "success" });
         setTimeout(() => uni.navigateBack(), 500);
       } catch (error) {
-        uni.showToast({ title: "投稿失败", icon: "none" });
+        showError(error, { title: "投稿失败" });
       } finally {
         this.submitting = false;
       }

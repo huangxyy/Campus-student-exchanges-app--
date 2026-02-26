@@ -224,6 +224,12 @@
         "navigationBarTextStyle": "white",
         "backgroundColor": "#0f172a"
       }
+    },
+    {
+      "path": "pages/admin/audit",
+      "style": {
+        "navigationBarTitleText": "风控审计台"
+      }
     }
   ],
   "tabBar": {

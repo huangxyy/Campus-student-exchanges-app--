@@ -69,6 +69,7 @@ import { queryProductsByUser } from "@/utils/product-service";
 import { listMyTasks, getTaskUserStats } from "@/utils/task-service";
 import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
 import { submitReport, REPORT_REASONS } from "@/utils/report-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   data() {
@@ -214,7 +215,7 @@ export default {
         });
         uni.navigateTo({ url: `/pages/chat/detail?conversationId=${conversation.id}` });
       } catch (error) {
-        uni.showToast({ title: "打开会话失败", icon: "none" });
+        showError(error, { title: "打开会话失败" });
       }
     }
   }

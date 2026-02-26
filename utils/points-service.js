@@ -1,5 +1,6 @@
 import { getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const LEDGER_KEY = "cm_points_ledger";
 const CHECKIN_KEY = "cm_checkin_record";
@@ -211,12 +212,12 @@ export async function addPoints(bizType, bizId) {
 
 export async function checkin() {
   const userId = getCurrentUserId();
-  if (!userId) { throw new Error("User is not logged in"); }
+  if (!userId) { throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in"); }
 
   const todayKey = getTodayKey();
   const record = getCheckinRecord(userId);
   if (record.lastDate === todayKey) {
-    throw new Error("Already checked in today");
+    throw createAppError(APP_ERROR_CODES.INVALID_STATE, "Already checked in today");
   }
 
   const entry = await addPoints("checkin", todayKey);

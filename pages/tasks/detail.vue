@@ -118,6 +118,7 @@ import { formatRelativeTime } from "@/utils/date";
 import { createOrGetConversationByTask, getTaskConversationMeta } from "@/utils/chat-service";
 import { getTaskById, getTaskUserStats, takeTask, updateTaskStatus } from "@/utils/task-service";
 import { submitReport, REPORT_REASONS } from "@/utils/report-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: {
@@ -441,7 +442,7 @@ export default {
         this.contactMeta = null;
         this.publisherStats = null;
         this.assigneeStats = null;
-        uni.showToast({ title: "任务加载失败", icon: "none" });
+        showError(error, { title: "任务加载失败" });
       } finally {
         this.loading = false;
       }
@@ -510,6 +511,9 @@ export default {
     },
 
     async contactPublisher() {
+      if (this.submitting) {
+        return;
+      }
       if (!this.isLogin) {
         this.goLogin();
         return;
@@ -535,16 +539,16 @@ export default {
       try {
         await this.openTaskConversation(this.task.publisherId, this.task.publisher);
       } catch (error) {
-        uni.showToast({
-          title: "打开会话失败",
-          icon: "none"
-        });
+        showError(error, { title: "打开会话失败" });
       } finally {
         this.submitting = false;
       }
     },
 
     async contactAssignee() {
+      if (this.submitting) {
+        return;
+      }
       if (!this.isLogin) {
         this.goLogin();
         return;
@@ -570,10 +574,7 @@ export default {
       try {
         await this.openTaskConversation(this.task.assignedUserId, this.task.assignedUser);
       } catch (error) {
-        uni.showToast({
-          title: "打开会话失败",
-          icon: "none"
-        });
+        showError(error, { title: "打开会话失败" });
       } finally {
         this.submitting = false;
       }
@@ -621,6 +622,9 @@ export default {
     },
 
     async takeCurrentTask() {
+      if (this.submitting) {
+        return;
+      }
       if (!this.isLogin) {
         this.goLogin();
         return;
@@ -672,6 +676,9 @@ export default {
     },
 
     reportTask() {
+      if (this.submitting) {
+        return;
+      }
       if (!this.isLogin) {
         this.goLogin();
         return;
@@ -684,6 +691,8 @@ export default {
         success: async (res) => {
           const selected = REPORT_REASONS[res.tapIndex];
           if (!selected) { return; }
+          if (this.submitting) { return; }
+          this.submitting = true;
           try {
             await submitReport({
               targetType: "task",
@@ -693,13 +702,18 @@ export default {
             });
             uni.showToast({ title: "举报已提交，感谢反馈", icon: "success" });
           } catch (error) {
-            uni.showToast({ title: error?.message || "举报失败", icon: "none" });
+            showError(error, { title: "举报失败" });
+          } finally {
+            this.submitting = false;
           }
         }
       });
     },
 
     async dualConfirmComplete() {
+      if (this.submitting) {
+        return;
+      }
       if (!this.isLogin || !this.task || this.task.status !== "assigned") {
         return;
       }
@@ -715,7 +729,7 @@ export default {
         } else if (result === "confirmed") {
           uni.showToast({ title: "已确认，等待对方确认", icon: "none" });
         } else {
-          uni.showToast({ title: "操作失败", icon: "none" });
+          uni.showToast({ title: "状态已变化，正在刷新", icon: "none" });
         }
         this.loadTask();
       } finally {
@@ -724,6 +738,9 @@ export default {
     },
 
     async changeStatus(status) {
+      if (this.submitting) {
+        return;
+      }
       if (!this.task || !this.myUserId) {
         return;
       }
@@ -733,9 +750,10 @@ export default {
         const ok = await updateTaskStatus(this.task.id, status, this.myUserId);
         if (!ok) {
           uni.showToast({
-            title: "操作失败，可能无权限或状态过期",
+            title: "状态已变化，正在刷新",
             icon: "none"
           });
+          this.loadTask();
           return;
         }
 

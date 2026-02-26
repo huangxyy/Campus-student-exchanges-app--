@@ -130,6 +130,7 @@ import EmptyState from "@/components/empty-state/empty-state.vue";
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
 import { getOrder, updateOrderStatus, getOrderStatusText, submitReview, getOrderReviews, CANCEL_REASONS } from "@/utils/order-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: { EmptyState },
@@ -285,7 +286,8 @@ export default {
       try {
         const ok = await updateOrderStatus(this.orderId, status);
         if (!ok) {
-          uni.showToast({ title: "操作失败，请刷新", icon: "none" });
+          uni.showToast({ title: "状态已变化，正在刷新", icon: "none" });
+          this.loadOrder();
           return;
         }
         uni.showToast({ title: "操作成功", icon: "success" });
@@ -296,6 +298,9 @@ export default {
     },
 
     handleCancel() {
+      if (this.submitting) {
+        return;
+      }
       const isPaid = this.order && this.order.status === "paid_confirmed";
       const labels = CANCEL_REASONS.map((r) => r.label);
       uni.showActionSheet({
@@ -315,11 +320,13 @@ export default {
             confirmColor: "#e74a62",
             success: async (modalRes) => {
               if (!modalRes.confirm) { return; }
+              if (this.submitting) { return; }
               this.submitting = true;
               try {
                 const ok = await updateOrderStatus(this.orderId, "cancelled", { cancelReason: reason.label });
                 if (!ok) {
-                  uni.showToast({ title: "取消失败，请刷新", icon: "none" });
+                  uni.showToast({ title: "状态已变化，正在刷新", icon: "none" });
+                  this.loadOrder();
                   return;
                 }
                 uni.showToast({ title: "订单已取消", icon: "none" });
@@ -354,8 +361,11 @@ export default {
         this.showReviewDialog = false;
         this.loadOrder();
       } catch (error) {
-        const msg = error?.message === "Already reviewed" ? "你已经评价过了" : "评价失败";
-        uni.showToast({ title: msg, icon: "none" });
+        if (error?.message === "Already reviewed") {
+          uni.showToast({ title: "你已经评价过了", icon: "none" });
+        } else {
+          showError(error, { title: "评价失败" });
+        }
       } finally {
         this.reviewSubmitting = false;
       }

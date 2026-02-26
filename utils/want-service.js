@@ -1,9 +1,11 @@
 import { getCurrentProfile, getCurrentUserId, wait, generateId } from "@/utils/common";
 import { getCloudDatabase } from "@/utils/cloud";
 import { sanitizeText } from "@/utils/sanitize";
+import { APP_ERROR_CODES, createAppError } from "@/utils/app-errors";
 
 const WANTS_KEY = "cm_wants";
 const SUBSCRIPTIONS_KEY = "cm_want_subscriptions";
+const ALERTS_KEY_PREFIX = "cm_arrival_alerts_";
 
 function normalizeWant(item = {}) {
   return {
@@ -87,6 +89,44 @@ function getSubscriptionCollection() {
   return db.collection("want_subscriptions");
 }
 
+function getArrivalAlertsCollection() {
+  const db = getCloudDatabase();
+  if (!db) {
+    return null;
+  }
+  return db.collection("arrival_alerts");
+}
+
+function normalizeAlert(item = {}) {
+  return {
+    id: item.id || item._id || generateId("alert"),
+    userId: item.userId || "",
+    productId: item.productId || "",
+    productTitle: item.productTitle || "",
+    productCategory: item.productCategory || "",
+    productPrice: Number(item.productPrice || 0),
+    createdAt: item.createdAt || Date.now(),
+    read: !!item.read
+  };
+}
+
+function readAlerts(userId) {
+  try {
+    const raw = uni.getStorageSync(ALERTS_KEY_PREFIX + (userId || "guest")) || [];
+    return raw.map((item) => normalizeAlert(item));
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveAlerts(userId, list) {
+  try {
+    uni.setStorageSync(ALERTS_KEY_PREFIX + (userId || "guest"), list);
+  } catch (error) {
+    // ignore
+  }
+}
+
 function isWantExpired(want) {
   if (!want.validUntil) {
     return false;
@@ -104,8 +144,10 @@ async function listWantsFromCloud() {
 
   const db = getCloudDatabase();
   const _ = db.command;
+  const now = Date.now();
   const res = await collection
     .where({ status: "active" })
+    .where(_.or([{ validUntil: _.exists(false) }, { validUntil: _.gt(now) }]))
     .orderBy("createdAt", "desc")
     .limit(100)
     .get();
@@ -257,6 +299,32 @@ async function matchWantsForProduct(product) {
   });
 }
 
+async function getArrivalAlertsFromCloud(userId) {
+  const coll = getArrivalAlertsCollection();
+  if (!coll || !userId) {
+    return [];
+  }
+  const res = await coll
+    .where({ userId })
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .get()
+    .catch(() => null);
+  if (!res || !res.data) {
+    return [];
+  }
+  return (res.data || []).map((item) => normalizeAlert(item));
+}
+
+async function markArrivalAlertReadInCloud(alertId) {
+  const coll = getArrivalAlertsCollection();
+  if (!coll || !alertId) {
+    return false;
+  }
+  const res = await coll.doc(alertId).update({ data: { read: true } }).catch(() => null);
+  return !!(res && res.stats && res.stats.updated > 0);
+}
+
 // --- Exported API ---
 
 export async function listWants() {
@@ -275,7 +343,7 @@ export async function listWants() {
 export async function publishWant(payload) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
   const profile = getCurrentProfile();
@@ -365,7 +433,7 @@ export async function getSubscription() {
 export async function updateSubscription(sub) {
   const userId = getCurrentUserId();
   if (!userId) {
-    throw new Error("User is not logged in");
+    throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "User is not logged in");
   }
 
   const cloudSub = await saveSubscriptionToCloud(userId, sub).catch(() => null);
@@ -408,4 +476,46 @@ export async function findMatchingWants(product) {
       (!want.priceMin || productPrice >= want.priceMin);
     return (titleMatch || categoryMatch) && priceInRange;
   });
+}
+
+export async function getArrivalAlerts() {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    return [];
+  }
+  const cloudList = await getArrivalAlertsFromCloud(userId).catch(() => null);
+  if (Array.isArray(cloudList)) {
+    return cloudList;
+  }
+  await wait();
+  return readAlerts(userId);
+}
+
+export async function markArrivalAlertRead(alertId) {
+  const userId = getCurrentUserId();
+  if (!userId || !alertId) {
+    return false;
+  }
+  const ok = await markArrivalAlertReadInCloud(alertId).catch(() => false);
+  if (ok) {
+    return true;
+  }
+  const list = readAlerts(userId);
+  const idx = list.findIndex((a) => a.id === alertId);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], read: true };
+    saveAlerts(userId, list);
+  }
+  await wait();
+  return true;
+}
+
+/**
+ * 商品发布成功后调用，触发云函数为匹配到的求购用户写入到货提醒（发而不等）。
+ */
+export function fireMatchAndNotifyWants(productId) {
+  if (!productId || typeof wx === "undefined" || !wx.cloud || typeof wx.cloud.callFunction !== "function") {
+    return;
+  }
+  wx.cloud.callFunction({ name: "matchAndNotifyWants", data: { productId } }).catch(() => {});
 }

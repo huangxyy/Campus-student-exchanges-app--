@@ -50,6 +50,7 @@
 import EmptyState from "@/components/empty-state/empty-state.vue";
 import { formatRelativeTime } from "@/utils/date";
 import { getMyWants, closeWant } from "@/utils/want-service";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: { EmptyState },
@@ -78,7 +79,7 @@ export default {
         this.list = await getMyWants();
       } catch (error) {
         this.list = [];
-        uni.showToast({ title: "加载失败", icon: "none" });
+        showError(error, { title: "加载失败" });
       } finally {
         this.loading = false;
       }
@@ -97,7 +98,7 @@ export default {
             uni.showToast({ title: "已关闭", icon: "none" });
             this.loadList();
           } else {
-            uni.showToast({ title: "操作失败", icon: "none" });
+            showError("UNKNOWN", { title: "操作失败" });
           }
         }
       });
