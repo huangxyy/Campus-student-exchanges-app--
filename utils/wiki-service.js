@@ -190,3 +190,76 @@ export function getStatusText(status) {
   const map = { pending: "待审核", approved: "已通过", rejected: "已驳回" };
   return map[status] || "未知";
 }
+
+// --- Comments ---
+const WIKI_COMMENTS_KEY = "cm_wiki_comments";
+
+function getCommentsCollection() {
+  const db = getCloudDatabase();
+  return db ? db.collection("wiki_comments") : null;
+}
+
+function normalizeComment(item = {}) {
+  return {
+    id: item.id || item._id || generateId("wc"),
+    articleId: item.articleId || "",
+    userId: item.userId || "",
+    userName: item.userName || "校园用户",
+    content: item.content || "",
+    createdAt: item.createdAt || Date.now()
+  };
+}
+
+async function listCommentsFromCloud(articleId) {
+  const coll = getCommentsCollection();
+  if (!coll || !articleId) { return []; }
+  const res = await coll
+    .where({ articleId })
+    .orderBy("createdAt", "asc")
+    .limit(100)
+    .get()
+    .catch(() => null);
+  return (res?.data || []).map(normalizeComment);
+}
+
+async function addCommentToCloud(articleId, userId, userName, content) {
+  const coll = getCommentsCollection();
+  if (!coll || !articleId) { throw new Error("Cloud database is unavailable"); }
+  const now = Date.now();
+  const data = { articleId, userId, userName, content, createdAt: now };
+  const addRes = await coll.add({ data });
+  return normalizeComment({ ...data, _id: addRes._id });
+}
+
+export async function listComments(articleId) {
+  const cloudList = await listCommentsFromCloud(articleId).catch(() => []);
+  if (cloudList.length > 0) { return cloudList; }
+  const key = WIKI_COMMENTS_KEY + "_" + (articleId || "");
+  const raw = readLocal(key);
+  return (raw || []).map(normalizeComment).sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export async function addComment(articleId, content) {
+  const userId = getCurrentUserId();
+  if (!userId) { throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "请先登录"); }
+  const profile = getCurrentProfile();
+  const text = sanitizeText(content, { maxLength: 500 });
+  if (!text) { throw createAppError(APP_ERROR_CODES.INVALID_PARAM, "请输入评论内容"); }
+
+  const cloudComment = await addCommentToCloud(articleId, userId, profile.nickName || "校园用户", text).catch(() => null);
+  if (cloudComment) { return cloudComment; }
+
+  const comment = normalizeComment({
+    articleId,
+    userId,
+    userName: profile.nickName || "校园用户",
+    content: text,
+    createdAt: Date.now()
+  });
+  const key = WIKI_COMMENTS_KEY + "_" + articleId;
+  const list = readLocal(key);
+  list.push(comment);
+  saveLocal(key, list);
+  await wait();
+  return comment;
+}

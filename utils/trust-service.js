@@ -171,6 +171,20 @@ export function getTrustLevel(score) {
   return getScoreLevel(score);
 }
 
+export function getTrustBadge(record = {}) {
+  const normalized = normalizeTrustRecord(record);
+  if (normalized.avgRating >= 4.8 && normalized.completedOrders >= 10) {
+    return { key: "honest_seller", label: "诚信卖家", icon: "🛡️" };
+  }
+  if (normalized.completedTasks >= 20) {
+    return { key: "helpful_partner", label: "热心帮手", icon: "🤝" };
+  }
+  if (normalized.score >= 90) {
+    return { key: "reliable_star", label: "靠谱之星", icon: "🌟" };
+  }
+  return null;
+}
+
 export async function recordOrderCompletion() {
   const userId = getCurrentUserId();
   if (!userId) { return; }

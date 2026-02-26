@@ -20,6 +20,9 @@
               <text class="rating-icon">{{ trustLevel.icon || '⭐' }}</text>
               <text :style="{ color: trustLevel.color }">{{ trustLevel.level }} {{ trustScore }}分</text>
             </view>
+            <view v-if="trustBadge" class="badge-chip anim-scale-in anim-d2">
+              <text>{{ trustBadge.icon }} {{ trustBadge.label }}</text>
+            </view>
             <view class="id-chip anim-scale-in anim-d3">{{ profile.studentId ? ('学号 ' + profile.studentId) : '学号待绑定' }}</view>
           </view>
         </view>
@@ -43,6 +46,7 @@
         <view class="stat-item press-able" @tap="goPage('/pages/points/index')">
           <text class="stat-value num-animate">{{ realPoints }}</text>
           <text class="stat-label">积分</text>
+          <text class="stat-level" v-if="pointsLevel.name">{{ pointsLevel.icon }} {{ pointsLevel.name }}</text>
         </view>
       </view>
     </view>
@@ -114,12 +118,12 @@
 
 <script>
 import { useUserStore } from "@/store/user";
-import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
+import { getTrustScore, getTrustLevel, getTrustBadge } from "@/utils/trust-service";
 import { createTapCounter, getRandomAvatarSecret, getRandomFunFact } from "@/utils/easter-eggs";
 import { queryProductsByUser } from "@/utils/product-service";
 import { listMyTasks } from "@/utils/task-service";
 import { listFavorites } from "@/utils/favorite-service";
-import { getMyPoints } from "@/utils/points-service";
+import { getMyPoints, getLevel } from "@/utils/points-service";
 
 let _ratingTapper = null;
 
@@ -128,6 +132,7 @@ export default {
     return {
       trustScore: 0,
       trustLevel: { level: "", color: "#8a93a7", icon: "" },
+      trustBadge: null,
       avatarSpinning: false,
       realProductCount: 0,
       realTaskCount: 0,
@@ -167,6 +172,10 @@ export default {
           favoriteCount: 0
         }
       );
+    },
+
+    pointsLevel() {
+      return getLevel(this.realPoints);
     }
   },
 
@@ -182,6 +191,7 @@ export default {
         const record = await getTrustScore();
         this.trustScore = record.score;
         this.trustLevel = getTrustLevel(record.score);
+        this.trustBadge = getTrustBadge(record);
       } catch (e) {
         // fallback
       }
@@ -427,6 +437,16 @@ export default {
   color: #4b62a8;
   font-size: 21rpx;
 }
+.badge-chip {
+  height: 44rpx;
+  line-height: 44rpx;
+  border-radius: 22rpx;
+  padding: 0 14rpx;
+  background: rgba(16, 185, 129, 0.12);
+  color: #0d9668;
+  font-size: 20rpx;
+  font-weight: 600;
+}
 
 .rating-icon {
   font-size: 22rpx;
@@ -469,8 +489,16 @@ export default {
 
 .stat-label {
   margin-top: 4rpx;
+}
+.stat-level {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
   color: #7a8ba8;
-  font-size: 22rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120rpx;
 }
 
 .stat-divider {

@@ -10,10 +10,19 @@
       <view class="banner-content">
         <text class="banner-emoji anim-bounce-in">🏆</text>
         <view>
-          <view class="banner-title">积分排行榜</view>
-          <view class="banner-desc">校园积分达人，看看谁最活跃</view>
+          <view class="banner-title">{{ currentTabLabel }}</view>
+          <view class="banner-desc">{{ currentTabDesc }}</view>
         </view>
       </view>
+    </view>
+
+    <view class="tab-row anim-fade-in anim-d1">
+      <text
+        v-for="t in rankTabs"
+        :key="t.value"
+        :class="['tab', currentTab === t.value ? 'active' : '']"
+        @tap="currentTab = t.value; loadRanking()"
+      >{{ t.label }}</text>
     </view>
 
     <!-- Top 3 Podium -->
@@ -80,8 +89,24 @@ export default {
   data() {
     return {
       list: [],
-      loading: false
+      loading: false,
+      currentTab: "points",
+      rankTabs: [
+        { value: "points", label: "积分榜", desc: "校园积分达人，看看谁最活跃" },
+        { value: "orders", label: "交易达人", desc: "完成交易最多的同学" },
+        { value: "reviews", label: "好评之星", desc: "收获好评最多的同学" },
+        { value: "tasks", label: "热心帮手", desc: "完成任务最多的同学" }
+      ]
     };
+  },
+
+  computed: {
+    currentTabLabel() {
+      return this.rankTabs.find((t) => t.value === this.currentTab)?.label || "排行榜";
+    },
+    currentTabDesc() {
+      return this.rankTabs.find((t) => t.value === this.currentTab)?.desc || "";
+    }
   },
 
   onShow() {
@@ -173,6 +198,10 @@ export default {
 .banner-emoji { font-size: 48rpx; }
 .banner-title { color: #1a2540; font-size: 34rpx; font-weight: 800; }
 .banner-desc { margin-top: 6rpx; color: #5a6a88; font-size: 24rpx; }
+
+.tab-row { display: flex; gap: 16rpx; margin-bottom: 20rpx; flex-wrap: wrap; }
+.tab { padding: 12rpx 24rpx; border-radius: 999rpx; background: rgba(255,255,255,0.6); color: #5a6a88; font-size: 24rpx; }
+.tab.active { background: linear-gradient(135deg, #f5a623, #e8920f); color: #fff; font-weight: 600; }
 
 /* Podium */
 .podium {

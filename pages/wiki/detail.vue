@@ -28,13 +28,32 @@
         </view>
         <view class="article-content">{{ article.content }}</view>
       </view>
+
+      <view class="comments-section glass-strong anim-slide-up anim-d2" style="border-radius: 24rpx;">
+        <view class="body-header">
+          <view class="body-bar"></view>
+          <text class="body-label">评论 ({{ comments.length }})</text>
+        </view>
+        <view v-if="comments.length === 0" class="comments-empty">暂无评论，来说两句吧</view>
+        <view v-for="c in comments" :key="c.id" class="comment-item">
+          <text class="comment-user">{{ c.userName }}</text>
+          <text class="comment-content">{{ c.content }}</text>
+          <text class="comment-time">{{ formatTime(c.createdAt) }}</text>
+        </view>
+        <view class="comment-input-row">
+          <input v-model.trim="commentText" class="comment-input" placeholder="写一条评论..." maxlength="500" />
+          <button class="comment-btn btn-bounce" size="mini" :disabled="submitting || !commentText" @tap="submitComment">发送</button>
+        </view>
+      </view>
     </template>
   </view>
 </template>
 
 <script>
 import EmptyState from "@/components/empty-state/empty-state.vue";
-import { getArticle } from "@/utils/wiki-service";
+import { getArticle, listComments, addComment } from "@/utils/wiki-service";
+import { formatRelativeTime } from "@/utils/date";
+import { showError } from "@/utils/error-handler";
 
 export default {
   components: { EmptyState },
@@ -43,16 +62,22 @@ export default {
     return {
       articleId: "",
       article: null,
-      loading: false
+      loading: false,
+      comments: [],
+      commentText: "",
+      submitting: false
     };
   },
 
   onLoad(query) {
     this.articleId = query.id || "";
     this.loadArticle();
+    this.loadComments();
   },
 
   methods: {
+    formatTime(ts) { return formatRelativeTime(ts); },
+
     async loadArticle() {
       if (!this.articleId) { return; }
       this.loading = true;
@@ -60,6 +85,26 @@ export default {
         this.article = await getArticle(this.articleId);
       } finally {
         this.loading = false;
+      }
+    },
+
+    async loadComments() {
+      if (!this.articleId) return;
+      this.comments = await listComments(this.articleId).catch(() => []);
+    },
+
+    async submitComment() {
+      if (!this.commentText || this.submitting) return;
+      this.submitting = true;
+      try {
+        const c = await addComment(this.articleId, this.commentText);
+        this.comments.push(c);
+        this.commentText = "";
+        uni.showToast({ title: "评论成功", icon: "success" });
+      } catch (error) {
+        showError(error, { title: "评论失败" });
+      } finally {
+        this.submitting = false;
       }
     },
 
@@ -103,4 +148,15 @@ export default {
 }
 .body-label { color: #1a2540; font-size: 28rpx; font-weight: 700; }
 .article-content { color: #2b3a56; font-size: 28rpx; line-height: 2; white-space: pre-wrap; letter-spacing: 0.3rpx; }
+
+.comments-section { margin-top: 16rpx; padding: 24rpx; }
+.comments-empty { color: #8a96a8; font-size: 24rpx; padding: 24rpx 0; text-align: center; }
+.comment-item { padding: 16rpx 0; border-bottom: 1rpx solid rgba(228,235,251,0.5); }
+.comment-user { color: #1f2636; font-size: 24rpx; font-weight: 600; }
+.comment-content { display: block; color: #2b3a56; font-size: 26rpx; margin-top: 6rpx; }
+.comment-time { display: block; color: #8a96a8; font-size: 20rpx; margin-top: 6rpx; }
+.comment-input-row { display: flex; gap: 16rpx; margin-top: 20rpx; align-items: center; }
+.comment-input { flex: 1; height: 72rpx; padding: 0 20rpx; border-radius: 36rpx; background: #f6f8fc; border: 1rpx solid #e5ebf8; font-size: 26rpx; }
+.comment-btn { margin: 0; padding: 0 28rpx; height: 64rpx; line-height: 64rpx; border-radius: 32rpx; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-size: 24rpx; }
+.comment-btn::after { border: none; }
 </style>

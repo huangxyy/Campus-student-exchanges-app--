@@ -106,7 +106,15 @@
       <text v-if="advanced.nearbyEnabled" class="filter-count">（按地图位置筛选）</text>
     </view>
 
-    <view v-if="list.length > 0">
+    <view v-if="loading && list.length === 0" class="skeleton-list">
+      <view v-for="n in 4" :key="'sk-' + n" class="skeleton-card">
+        <view class="skeleton-line skeleton-title"></view>
+        <view class="skeleton-line skeleton-sub"></view>
+        <view class="skeleton-line skeleton-sub short"></view>
+      </view>
+    </view>
+
+    <view v-else-if="list.length > 0">
       <product-card
         v-for="(item, index) in list"
         :key="item._id"
@@ -739,6 +747,33 @@ export default {
   color: #9aa2b3;
   font-size: 24rpx;
   margin: 24rpx 0 120rpx;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+.skeleton-card {
+  padding: 22rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1rpx solid rgba(226, 234, 248, 0.8);
+}
+.skeleton-line {
+  height: 22rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #edf2fb 0%, #f8fafe 50%, #edf2fb 100%);
+  background-size: 240% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+.skeleton-title { height: 28rpx; width: 70%; }
+.skeleton-sub { margin-top: 14rpx; width: 92%; }
+.skeleton-sub.short { width: 55%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -40% 0; }
 }
 
 .float-btn {

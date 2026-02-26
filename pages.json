@@ -168,6 +168,12 @@
       }
     },
     {
+      "path": "pages/points/exchange",
+      "style": {
+        "navigationBarTitleText": "积分兑换"
+      }
+    },
+    {
       "path": "pages/wiki/index",
       "style": {
         "navigationBarTitleText": "校园维基",

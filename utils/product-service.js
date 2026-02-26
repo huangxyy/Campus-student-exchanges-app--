@@ -9,6 +9,8 @@ const publishLimiter = createRateLimiter(3000);
 
 const CUSTOM_PRODUCT_KEY = "cm_custom_products";
 const CLOUD_PRODUCT_FOLDER = "products";
+const PRODUCT_QUERY_CACHE_PREFIX = "cm_product_query_cache_v1_";
+const PRODUCT_QUERY_CACHE_TTL = 30 * 1000;
 
 function logCloudFallback(action, error) {
   console.warn(`[ProductService] ${action}: cloud failed, fallback to local`, error);
@@ -16,6 +18,59 @@ function logCloudFallback(action, error) {
 
 function isCloudDatabaseReady() {
   return !!getCloudDatabase();
+}
+
+function getQueryCacheKey(params = {}) {
+  try {
+    return PRODUCT_QUERY_CACHE_PREFIX + JSON.stringify(params || {});
+  } catch (error) {
+    return PRODUCT_QUERY_CACHE_PREFIX + "fallback";
+  }
+}
+
+function getCachedQueryResult(params = {}) {
+  const key = getQueryCacheKey(params);
+  try {
+    const cached = uni.getStorageSync(key);
+    if (!cached || !cached.ts || !cached.data) {
+      return null;
+    }
+    if (Date.now() - Number(cached.ts || 0) > PRODUCT_QUERY_CACHE_TTL) {
+      return null;
+    }
+    return cached.data;
+  } catch (error) {
+    return null;
+  }
+}
+
+function setCachedQueryResult(params = {}, data = null) {
+  if (!data) {
+    return;
+  }
+  const key = getQueryCacheKey(params);
+  try {
+    uni.setStorageSync(key, {
+      ts: Date.now(),
+      data
+    });
+  } catch (error) {
+    // ignore cache failures
+  }
+}
+
+function clearProductQueryCache() {
+  try {
+    const info = uni.getStorageInfoSync();
+    const keys = Array.isArray(info.keys) ? info.keys : [];
+    keys.forEach((k) => {
+      if (String(k).startsWith(PRODUCT_QUERY_CACHE_PREFIX)) {
+        uni.removeStorageSync(k);
+      }
+    });
+  } catch (error) {
+    // ignore cache clear failures
+  }
 }
 
 function toNumberOrNull(value) {
@@ -404,6 +459,11 @@ async function publishProductToCloud(payload) {
 }
 
 export async function queryProducts(params = {}) {
+  const cached = getCachedQueryResult(params);
+  if (cached) {
+    return cached;
+  }
+
   if (isCloudDatabaseReady()) {
     const cloudResult = await safeCloudCall("ProductService.queryProducts", () => queryProductsFromCloud(params), {
       maxRetries: 1,
@@ -411,6 +471,7 @@ export async function queryProducts(params = {}) {
       onError: (error) => logCloudFallback("queryProducts", error)
     });
     if (cloudResult) {
+      setCachedQueryResult(params, cloudResult);
       return cloudResult;
     }
   }
@@ -441,11 +502,13 @@ export async function queryProducts(params = {}) {
 
   await delay();
 
-  return {
+  const result = {
     list: sliced,
     total: sorted.length,
     noMore: end >= sorted.length
   };
+  setCachedQueryResult(params, result);
+  return result;
 }
 
 export async function getProductById(id) {
@@ -509,6 +572,7 @@ export async function publishProduct(payload) {
       onError: (error) => logCloudFallback("publishProduct", error)
     });
     if (cloudDraft) {
+      clearProductQueryCache();
       addPoints("publish_product", cloudDraft._id).catch(() => null);
       return cloudDraft;
     }
@@ -518,6 +582,7 @@ export async function publishProduct(payload) {
   const customProducts = readCustomProducts();
   customProducts.unshift(localDraft);
   saveCustomProducts(customProducts);
+  clearProductQueryCache();
   addPoints("publish_product", localDraft._id).catch(() => null);
   await delay(100);
   return localDraft;
@@ -646,6 +711,7 @@ export async function updateProductStatus(productId, status, options = {}) {
       }
     );
     if (cloudUpdated) {
+      clearProductQueryCache();
       return true;
     }
   }
@@ -655,6 +721,9 @@ export async function updateProductStatus(productId, status, options = {}) {
     status,
     updatedAt: Date.now()
   }));
+  if (updated) {
+    clearProductQueryCache();
+  }
   await delay(80);
   return !!updated;
 }
@@ -704,12 +773,16 @@ export async function deleteProduct(productId) {
           return false;
         });
       if (cloudDeleted) {
+        clearProductQueryCache();
         return true;
       }
     }
   }
 
   const localDeleted = removeCustomProductInStorage(productId);
+  if (localDeleted) {
+    clearProductQueryCache();
+  }
   await delay(80);
   return localDeleted;
 }

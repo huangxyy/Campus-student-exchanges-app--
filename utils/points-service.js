@@ -263,3 +263,81 @@ export function getPointsRules() {
       reason: val.reason
     }));
 }
+
+// --- Level (by total points) ---
+const LEVELS = [
+  { min: 0, name: "校园新人", icon: "🌱", nextAt: 50 },
+  { min: 50, name: "活跃用户", icon: "🌿", nextAt: 150 },
+  { min: 150, name: "校园达人", icon: "🌟", nextAt: 400 },
+  { min: 400, name: "超级达人", icon: "👑", nextAt: 1000 },
+  { min: 1000, name: "传奇学长", icon: "🏆", nextAt: Infinity }
+];
+
+export function getLevel(total) {
+  const t = Number(total) || 0;
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (t >= LEVELS[i].min) return { ...LEVELS[i], level: i + 1 };
+  }
+  return { ...LEVELS[0], level: 1 };
+}
+
+export function getLevelProgress(total) {
+  const level = getLevel(total);
+  const nextAt = level.nextAt;
+  if (nextAt === Infinity) return { level, current: total, need: 0, percent: 100 };
+  const prev = LEVELS[level.level - 2];
+  const prevMin = prev ? prev.min : 0;
+  const need = nextAt - prevMin;
+  const current = total - prevMin;
+  const percent = Math.min(100, Math.round((current / need) * 100));
+  return { level, current: Math.max(0, current), need, percent };
+}
+
+// --- Exchange ---
+const EXCHANGE_ITEMS = [
+  { id: "top", name: "商品置顶 1 天", cost: 50, icon: "📌", desc: "在列表前排展示" },
+  { id: "urgent", name: "求购加急推送", cost: 30, icon: "⚡", desc: "优先匹配求购者" },
+  { id: "frame", name: "专属头像框", cost: 100, icon: "🖼", desc: "7 天头像框权益" }
+];
+
+export function getExchangeItems() {
+  return EXCHANGE_ITEMS;
+}
+
+export async function exchangePoints(itemId) {
+  const userId = getCurrentUserId();
+  if (!userId) throw createAppError(APP_ERROR_CODES.AUTH_REQUIRED, "请先登录");
+
+  const item = EXCHANGE_ITEMS.find((i) => i.id === itemId);
+  if (!item) throw createAppError(APP_ERROR_CODES.INVALID_PARAM, "无效的兑换项");
+
+  const { total } = await getMyPoints();
+  if (total < item.cost) throw createAppError(APP_ERROR_CODES.INVALID_STATE, "积分不足");
+
+  const coll = getLedgerCollection();
+  if (coll) {
+    const now = Date.now();
+    await coll.add({
+      data: {
+        userId,
+        change: -item.cost,
+        reason: `兑换：${item.name}`,
+        bizType: "exchange_" + itemId,
+        bizId: now + "",
+        createdAt: now
+      }
+    });
+    return { success: true, item };
+  }
+
+  const entry = normalizeLedgerEntry({
+    userId,
+    change: -item.cost,
+    reason: `兑换：${item.name}`,
+    bizType: "exchange_" + itemId,
+    bizId: Date.now() + "",
+    createdAt: Date.now()
+  });
+  saveLedgerEntry(entry);
+  return { success: true, item };
+}

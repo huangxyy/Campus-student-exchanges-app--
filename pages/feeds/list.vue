@@ -40,7 +40,19 @@
       @action="goPublish"
     />
 
+    <view v-if="loading && list.length === 0" class="skeleton-list">
+      <view v-for="n in 3" :key="'fd-sk-' + n" class="skeleton-card">
+        <view class="skeleton-head">
+          <view class="skeleton-avatar"></view>
+          <view class="skeleton-name"></view>
+        </view>
+        <view class="skeleton-line"></view>
+        <view class="skeleton-line short"></view>
+      </view>
+    </view>
+
     <view
+      v-else
       v-for="(item, idx) in list"
       :key="item.id"
       :class="['feed-card', 'card-press', 'anim-slide-up', idx < 10 ? ('anim-d' + (idx + 1)) : '']"
@@ -501,6 +513,40 @@ export default {
   color: #6a7e9a;
 }
 
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+.skeleton-card {
+  padding: 22rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1rpx solid rgba(226, 234, 248, 0.8);
+}
+.skeleton-head { display: flex; align-items: center; gap: 12rpx; margin-bottom: 14rpx; }
+.skeleton-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #edf2fb;
+}
+.skeleton-name {
+  height: 22rpx;
+  width: 180rpx;
+  border-radius: 999rpx;
+  background: #edf2fb;
+}
+.skeleton-line {
+  height: 22rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #edf2fb 0%, #f8fafe 50%, #edf2fb 100%);
+  background-size: 240% 100%;
+  animation: skeleton-shimmer-feed 1.2s ease-in-out infinite;
+  margin-bottom: 10rpx;
+}
+.skeleton-line.short { width: 62%; margin-bottom: 0; }
+
 /* Loading */
 .loading-state {
   display: flex;
@@ -518,6 +564,10 @@ export default {
   border-top-color: #2f6bff;
   border-radius: 50%;
   animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes skeleton-shimmer-feed {
+  0% { background-position: 200% 0; }
+  100% { background-position: -40% 0; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

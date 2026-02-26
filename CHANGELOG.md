@@ -22,11 +22,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - 页面错误提示统一收敛到 `showError()`，提升提示一致性与可维护性；积分页签到失败分支改为使用 `showError()`。
 - Week 4：求购列表云端过滤过期（`validUntil`）；商品发布成功后触发 `fireMatchAndNotifyWants(productId)`；到货提醒页新增「匹配到你的新商品」列表与已读跳转。
 
+### Added (Week 5–6 收口)
+
+- 积分等级与进度条（getLevel / getLevelProgress）、积分兑换页（置顶/加急/头像框）、排行榜多维度 Tab（积分榜/交易达人/好评之星/热心帮手）。
+- 维基详情页评论区（listComments / addComment）、投稿审核状态（getStatusText）。
+- 个人中心积分等级展示（pointsLevel）。
+
+### Added (Week 7 收口)
+
+- 信任徽章规则与展示：`getTrustBadge()`，支持「诚信卖家 / 热心帮手 / 靠谱之星」在个人页、用户主页展示。
+- 商品列表查询缓存：`queryProducts()` 增加 30s 本地缓存；商品发布、状态变更、删除后自动失效缓存。
+- 商品列表与动态列表新增首屏骨架屏，优化弱网场景首屏感知体验。
+
 ### Planned
 
-- Week5：校园动态 + 积分体系 + 排行榜
-- Week6：校园维基 + 活动专题 + 个人中心增强
-- Week7：性能优化 + 安全治理 + 信任体系
 - Week8：全量测试 + 提审上线
 
 ## [0.1.0] - 2026-02-15

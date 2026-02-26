@@ -28,7 +28,8 @@
               <view class="trust-fill" :style="{ width: Math.min(100, trustScore) + '%', background: trustLevel.color }"></view>
             </view>
           </view>
-          <text v-if="taskStats && taskStats.helperTag" class="helper-tag">{{ taskStats.helperTag }}</text>
+          <text v-if="trustBadge" class="helper-tag">{{ trustBadge.icon }} {{ trustBadge.label }}</text>
+          <text v-else-if="taskStats && taskStats.helperTag" class="helper-tag">{{ taskStats.helperTag }}</text>
         </view>
         <view class="stats-row">
           <view class="stat-block anim-count" v-for="stat in statItems" :key="stat.label">
@@ -67,7 +68,7 @@ import { createOrGetConversationByProduct } from "@/utils/chat-service";
 import { getCloudDatabase } from "@/utils/cloud";
 import { queryProductsByUser } from "@/utils/product-service";
 import { listMyTasks, getTaskUserStats } from "@/utils/task-service";
-import { getTrustScore, getTrustLevel } from "@/utils/trust-service";
+import { getTrustScore, getTrustLevel, getTrustBadge } from "@/utils/trust-service";
 import { submitReport, REPORT_REASONS } from "@/utils/report-service";
 import { showError } from "@/utils/error-handler";
 
@@ -82,7 +83,8 @@ export default {
       loading: false,
       trustScore: 0,
       trustLevel: { level: "", color: "#8a93a7", icon: "" },
-      taskStats: null
+      taskStats: null,
+      trustBadge: null
     };
   },
 
@@ -133,6 +135,7 @@ export default {
         if (trustRecord) {
           this.trustScore = trustRecord.score;
           this.trustLevel = getTrustLevel(trustRecord.score);
+          this.trustBadge = getTrustBadge(trustRecord);
         }
 
         if (this.isSelf && this.userStore.profile && !this.userInfo.nickName) {

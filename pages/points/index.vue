@@ -30,7 +30,19 @@
             <text class="rank-icon">🏆</text>
             排行榜
           </button>
+          <button class="exchange-btn btn-bounce anim-scale-in anim-d3" @tap="goExchange">
+            <text class="exchange-icon">🎁</text>
+            兑换
+          </button>
         </view>
+      </view>
+      <view v-if="levelProgress" class="level-bar anim-fade-in anim-d2">
+        <view class="level-info">
+          <text class="level-icon">{{ levelProgress.level.icon }}</text>
+          <text class="level-name">{{ levelProgress.level.name }}</text>
+          <text class="level-next" v-if="levelProgress.percent < 100">距下一级 {{ levelProgress.need - levelProgress.current }} 积分</text>
+        </view>
+        <view class="level-track"><view class="level-fill" :style="{ width: levelProgress.percent + '%' }"></view></view>
       </view>
     </view>
 
@@ -80,7 +92,7 @@
 <script>
 import { useUserStore } from "@/store/user";
 import { formatRelativeTime } from "@/utils/date";
-import { checkin, getCheckinStatus, getMyPoints, getPointsRules } from "@/utils/points-service";
+import { checkin, getCheckinStatus, getMyPoints, getPointsRules, getLevelProgress } from "@/utils/points-service";
 import { showError } from "@/utils/error-handler";
 
 export default {
@@ -96,7 +108,11 @@ export default {
 
   computed: {
     userStore() { return useUserStore(); },
-    isLogin() { return this.userStore.isLogin; }
+    isLogin() { return this.userStore.isLogin; },
+    levelProgress() {
+      const total = this.pointsData.total || 0;
+      return getLevelProgress(total);
+    }
   },
 
   onShow() {
@@ -143,6 +159,10 @@ export default {
 
     goRanking() {
       uni.navigateTo({ url: "/pages/points/ranking" });
+    },
+
+    goExchange() {
+      uni.navigateTo({ url: "/pages/points/exchange" });
     }
   }
 };
@@ -286,6 +306,37 @@ export default {
 }
 .rank-btn::after { border: none; }
 .rank-icon { font-size: 20rpx; }
+
+.exchange-btn {
+  margin: 0;
+  height: 56rpx;
+  line-height: 56rpx;
+  border-radius: 28rpx;
+  border: none;
+  background: rgba(230, 248, 240, 0.9);
+  color: #0d8c5c;
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 0 22rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  border: 1rpx solid rgba(19, 194, 163, 0.2);
+}
+.exchange-btn::after { border: none; }
+.exchange-icon { font-size: 20rpx; }
+
+.level-bar {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(245, 166, 35, 0.12);
+}
+.level-info { display: flex; align-items: center; gap: 10rpx; margin-bottom: 10rpx; }
+.level-icon { font-size: 24rpx; }
+.level-name { color: #3a4a68; font-size: 24rpx; font-weight: 600; }
+.level-next { color: #8a96a8; font-size: 20rpx; margin-left: auto; }
+.level-track { height: 10rpx; border-radius: 5rpx; background: rgba(245, 166, 35, 0.15); overflow: hidden; }
+.level-fill { height: 100%; border-radius: 5rpx; background: linear-gradient(90deg, #f5a623, #e8920f); transition: width 0.3s ease; }
 
 /* Section Head */
 .section-head {
